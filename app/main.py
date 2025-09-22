@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import logging.config
 
 from app.core.config import settings, reset_settings
-from app.api.endpoints import router as api_router
+from app.api import router as api_router
 from app.dependencies import get_llama_handler, cleanup_llama_handler
 
 from fastapi import Request

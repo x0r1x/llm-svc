@@ -7,6 +7,14 @@
 * GET `/v1/health` - Проверка статуса сервиса
 * GET `/v1/models` - Список доступных моделей
 
+## Документация API
+После запуска автоматически генерируется документация:
+
+Swagger UI: http://localhost:8000/docs
+
+ReDoc: http://localhost:8000/redoc
+
+
 ## Особенности
 
 - Полная совместимость с OpenAI API
@@ -154,19 +162,48 @@ docker run -d -p 8000:8000 llm-svc
 
 Обратитесь к сервису 
 
-* c поддержкой stream `stream=true`
-```bash
-curl -X POST http://localhost:8000/v1/chat/completions \
-  -H "Content-Type: application/json" \
-  -d '{"model": "Qwen3-Instruct-4b-chat", "user": "68c1bf2dbd56af77416acdd9", "stream": true, "messages": [{"role": "user", "content": "Привет"}]}'
-```
+Базовый запрос к чату:
 
 * без поддержки stream `stream=false`
 
 ```bash 
 curl -X POST http://localhost:8000/v1/chat/completions \
   -H "Content-Type: application/json" \
-  -d '{"model": "Qwen3-Instruct-4b-chat", "user": "68c1bf2dbd56af77416acdd9", "stream": false, "messages": [{"role": "user", "content": "Привет"}]}'
+  -d '{
+    "model": "Qwen3-Instruct-4b-chat",
+    "messages": [
+      {"role": "user", "content": "Расскажи о квантовых компьютерах"}
+    ],
+    "stream": false
+  }'
+```
+
+ Потоковый запрос:
+
+* c поддержкой stream `stream=true`
+
+```bash
+curl -X POST http://localhost:8000/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Accept: text/event-stream" \
+  -d '{
+    "model": "Qwen3-Instruct-4b-chat",
+    "messages": [
+      {"role": "system", "content": "Ты полезный ассистент"},
+      {"role": "user", "content": "Напиши короткий рассказ"}
+    ],
+    "stream": true
+  }'
+```
+
+Формат потокового ответа (SSE)
+
+```plaintext
+data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"Qwen3-Instruct-4b-chat","choices":[{"index":0,"delta":{"content":"Привет"},"finish_reason":null}]}
+
+data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"Qwen3-Instruct-4b-chat","choices":[{"index":0,"delta":{"content":"!"},"finish_reason":null}]}
+
+data: [DONE]
 ```
 
 ## Настройка LibreChat

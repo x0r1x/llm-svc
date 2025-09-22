@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
-
-from app.models.schemas import ChatRequest, ChatResponse, HealthResponse, ModelsList
+from app.models.schemas import ChatRequest
 from app.services.llama_handler import LlamaHandler
 from app.api.dependencies import get_llama_service
 import logging
@@ -52,31 +51,3 @@ async def chat_completion(
             detail=f"Error generating response: {str(e)}"
         )
 
-@router.get("/health", response_model=HealthResponse)
-async def health_check(
-    llama_service: LlamaHandler = Depends(get_llama_service),
-):
-    """Проверка статуса сервиса и загрузки модели."""
-    logger.info("Health requested")
-    return HealthResponse(
-        status="healthy",
-        model_loaded=llama_service.is_loaded(),
-        model_name=llama_service.model_name if llama_service.is_loaded() else None,
-    )
-
-@router.get("/models", response_model=ModelsList)
-async def list_models(
-    llama_service: LlamaHandler = Depends(get_llama_service),
-):
-    """Список доступных моделей."""
-    logger.info("Models list requested")
-    return ModelsList(
-        data=[
-            {
-                "id": llama_service.model_name,
-                "object": "model",
-                "owned_by": "local",
-                "permissions": []
-            }
-        ]
-    )

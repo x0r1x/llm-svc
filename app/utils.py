@@ -24,17 +24,14 @@ def convert_to_chat_completion_messages(messages: List[Message]) -> List[Union[
         if msg.role == "system":
             result.append(ChatCompletionRequestSystemMessage(
                 content=msg.content,
-                name=msg.name
             ))
         elif msg.role == "user":
             result.append(ChatCompletionRequestUserMessage(
                 content=msg.content,
-                name=msg.name
             ))
         elif msg.role == "assistant":
             result.append(ChatCompletionRequestAssistantMessage(
                 content=msg.content,
-                name=msg.name
             ))
         elif msg.role == "tool":
             result.append(ChatCompletionRequestToolMessage(
@@ -44,7 +41,6 @@ def convert_to_chat_completion_messages(messages: List[Message]) -> List[Union[
         elif msg.role == "function":
             result.append(ChatCompletionRequestFunctionMessage(
                 content=msg.content,
-                name=msg.name if msg.name else ""
             ))
 
     return result
@@ -56,7 +52,6 @@ def convert_to_dict_messages(messages: List[Message]) -> List[Dict[str, Any]]:
         {
             "role": msg.role,
             "content": msg.content,
-            **({"name": msg.name} if msg.name else {})
         }
         for msg in messages
     ]

@@ -12,22 +12,18 @@ class MessageRole(str, Enum):
 class Message(BaseModel):
     role: Literal["system", "user", "assistant", "function", "tool"]
     content: str
-    name: Optional[str] = None
 
 class ChatCompletionRequestSystemMessage(BaseModel):
     role: Literal["system"] = "system"
     content: str
-    name: Optional[str] = None
 
 class ChatCompletionRequestUserMessage(BaseModel):
     role: Literal["user"] = "user"
     content: Union[str, List[Dict[str, Any]]]
-    name: Optional[str] = None
 
 class ChatCompletionRequestAssistantMessage(BaseModel):
     role: Literal["assistant"] = "assistant"
     content: Optional[str] = None
-    name: Optional[str] = None
     tool_calls: Optional[List[Dict[str, Any]]] = None
 
 class ChatCompletionRequestToolMessage(BaseModel):
@@ -38,10 +34,9 @@ class ChatCompletionRequestToolMessage(BaseModel):
 class ChatCompletionRequestFunctionMessage(BaseModel):
     role: Literal["function"] = "function"
     content: str
-    name: str
 
 class ChatRequest(BaseModel):
-    model: str = "llama2"
+    model: str = "abstract-model"
     messages: List[Message]
     temperature: Optional[float] = Field(0.7, ge=0, le=2)
     max_tokens: Optional[int] = Field(256, ge=1)
@@ -70,6 +65,6 @@ class HealthResponse(BaseModel):
     model_loaded: bool
     model_name: Optional[str] = None
 
-class ModelsList(BaseModel):
+class ModelsListResponse(BaseModel):
     data: List[Dict[str, Any]]
     object: str = "list"

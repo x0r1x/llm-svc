@@ -2,6 +2,13 @@
 API endpoints module.
 """
 
-from .endpoints import router
+from fastapi import APIRouter
+from .endpoints import chat, health, models
 
-__all__ = ["router"]
+# Создаем основной роутер API
+router = APIRouter()
+
+# Включаем все эндпоинты из модулей
+router.include_router(health.router, tags=["Health"])
+router.include_router(models.router, tags=["Models"])
+router.include_router(chat.router, tags=["Chat"])
