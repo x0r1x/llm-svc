@@ -12,7 +12,7 @@ cors:
   allow_headers: ["*"]
 
 model:
-  path: "models/Qwen3-4B-Instruct-2507-Q8_0.gguf" #"/dev/null"  # Фейковый путь для тестов
+  path: "/dev/null"  # Фейковый путь для тестов
   name: "test-model"  # Важно: это значение должно совпадать с тестами
   ctx_size: 512
   gpu_layers: 0
