@@ -205,3 +205,16 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Игнорировать папки с PyCharm
+.idea
+
+# Игнорировать папки с моделями
+models/*.gguf
+
+# Игнорировать локальный конфиг
+config/config.yml
+
+# Прочие файлы
+.DS_Store
+Thumbs.db
