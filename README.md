@@ -1,4 +1,4 @@
-# Llama CPP API Service for LibreChat
+# Llama CPP API Service
 
 Этот сервис предоставляет API, совместимый с OpenAI, для работы с локальными LLM через llama-cpp-python, чтобы интегрировать их с LibreChat.
 
