@@ -37,3 +37,8 @@ logging:
 
 caching:
   enabled: false
+
+security:
+  enabled: false
+  api_key: null
+  api_key_header: "X-API-Key"

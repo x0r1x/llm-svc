@@ -1,12 +1,13 @@
 import json
 import time
 import uuid
+import uvicorn
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import logging.config
 
-from app.core.config import settings, reset_settings
+from app.core.config import settings
 from app.api import router as api_router
 from app.dependencies import get_llama_handler, cleanup_llama_handler
 
@@ -56,26 +57,24 @@ async def lifespan(app: FastAPI):
 
 def create_application() -> FastAPI:
     """Создание и настройка FastAPI приложения"""
-    # Сбрасываем настройки для применения изменений
-    reset_settings()
-    from app.core.config import settings as current_settings
+
 
     application = FastAPI(
-        title=current_settings.app.title,
-        description=current_settings.app.description,
-        version=current_settings.app.version,
+        title=settings.app.title,
+        description=settings.app.description,
+        version=settings.app.version,
         lifespan=lifespan,
-        docs_url=current_settings.server.docs_url,
-        redoc_url=current_settings.server.redoc_url,
+        docs_url=settings.server.docs_url,
+        redoc_url=settings.server.redoc_url,
     )
 
     # Настройка CORS
     application.add_middleware(
         CORSMiddleware,
-        allow_origins=current_settings.cors.allowed_origins,
-        allow_credentials=current_settings.cors.allow_credentials,
-        allow_methods=current_settings.cors.allow_methods,
-        allow_headers=current_settings.cors.allow_headers,
+        allow_origins=settings.cors.allowed_origins,
+        allow_credentials=settings.cors.allow_credentials,
+        allow_methods=settings.cors.allow_methods,
+        allow_headers=settings.cors.allow_headers,
     )
 
     # Подключение роутеров
@@ -121,12 +120,9 @@ async def log_requests(request: Request, call_next):
     return response
 
 if __name__ == "__main__":
-    import uvicorn
-    from app.core.config import settings as current_settings
-
     uvicorn.run(
         app,
-        host=current_settings.server.host,
-        port=current_settings.server.port,
-        log_level=current_settings.server.log_level.lower(),
+        host=settings.server.host,
+        port=settings.server.port,
+        log_level=settings.server.log_level.lower(),
     )

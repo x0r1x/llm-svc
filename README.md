@@ -119,14 +119,14 @@ python -m pytest test/test_api.py::test_health_check -v
 Запуск тестов с покрытием:
 
 ```bash
-pytest tests/ --cov=app --cov-report=html
+pytest test/ --cov=app --cov-report=html
 ````
 
 Запуск тестов в Docker:
 
 ```bash
 docker-compose -f docker-compose.test.yml up -d
-pytest tests/ -v
+pytest test/ -v
 ```
 
 ## Быстрый старт

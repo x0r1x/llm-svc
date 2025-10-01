@@ -62,6 +62,12 @@ class CachingConfig(BaseModel):
     max_size: int = 1000
 
 
+class SecurityConfig(BaseModel):
+    enabled: bool = True
+    api_key: Optional[str] = None
+    api_key_header: str = "X-API-Key"
+
+
 class Settings(BaseModel):
     server: ServerConfig
     cors: CorsConfig
@@ -71,6 +77,7 @@ class Settings(BaseModel):
     monitoring: MonitoringConfig
     logging: LoggingConfig
     caching: CachingConfig
+    security: SecurityConfig
 
     @classmethod
     def from_yaml(cls, config_path: str = None):
@@ -108,10 +115,13 @@ def get_settings() -> Settings:
         _settings = Settings.from_yaml(config_path)
     return _settings
 
-def reset_settings():
-    """Сброс настроек (для тестов)."""
-    global _settings
-    _settings = None
+def reset_settings() -> Settings:
+    """Сброс и принудительная перезагрузка настроек."""
+    global _settings, settings
+    config_path = os.environ.get("CONFIG_PATH")
+    _settings = Settings.from_yaml(config_path)
+    settings = _settings  # Обновляем глобальную переменную
+    return _settings
 
 # Инициализация настроек
 settings = get_settings()

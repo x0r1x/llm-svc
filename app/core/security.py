@@ -1,18 +1,43 @@
 """
 Модуль для функций безопасности (аутентификация, авторизация и т.д.)
-Пока не используется, но оставлен для будущего расширения.
 """
 
-from fastapi import HTTPException, status, Depends
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import HTTPException, status, Depends, Header
+from app.core.config import get_settings
 
-security = HTTPBearer()
+settings = get_settings()
 
-async def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
+async def verify_api_key(x_api_key: str = Header(None)):
     """
-    Заглушка для проверки токена аутентификации.
-    В реальном приложении здесь должна быть реализована проверка токена.
+    Проверка API ключа из заголовка запроса.
     """
-    # В реальном приложении здесь должна быть проверка токена
-    # Пока что просто пропускаем все запросы
-    return credentials
+    
+    # Если аутентификация отключена, пропускаем проверку
+    if not settings.security.enabled:
+        return True
+    
+    # Если аутентификация включена, но ключ не задан в конфигурации
+    if not settings.security.api_key:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="API key is not configured on server",
+            headers={"WWW-Authenticate": "API-Key"},
+        )
+    
+    # Если заголовок не передан
+    if not x_api_key:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="API key is missing",
+            headers={"WWW-Authenticate": "API-Key"},
+        )
+    
+    # Проверка ключа
+    if x_api_key != settings.security.api_key:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid API key",
+            headers={"WWW-Authenticate": "API-Key"},
+        )
+    
+    return True

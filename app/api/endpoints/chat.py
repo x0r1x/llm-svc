@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from app.models.schemas import ChatRequest
 from app.services.llama_handler import LlamaHandler
-from app.api.dependencies import get_llama_service
+from app.api.dependencies import get_llama_service, require_api_key
 import logging
 
 logger = logging.getLogger(__name__)
@@ -12,6 +12,7 @@ router = APIRouter()
 async def chat_completion(
     request: ChatRequest,
     llama_service: LlamaHandler = Depends(get_llama_service),
+    api_key: bool = Depends(require_api_key),
 ):
     """
     Эндпоинт совместимый с OpenAI API для обработки запросов чата.
