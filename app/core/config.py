@@ -68,6 +68,29 @@ class SecurityConfig(BaseModel):
     api_key_header: str = "X-API-Key"
 
 
+class NexusConfig(BaseModel):
+    enabled: bool = False
+    url: str = ""
+    repo: str = ""
+    name: str = ""
+    id: str = ""
+    version: str = ""
+    file_name: str = ""
+    login: Optional[str] = None
+    password: Optional[str] = None
+    cert_path: Optional[str] = None
+
+    def __init__(self, **data):
+        # Инициализация параметров аутентификации из переменных окружения, если они не заданы в конфиге
+        if 'login' not in data or data['login'] is None:
+            data['login'] = os.environ.get('NEXUS_LOGIN')
+        if 'password' not in data or data['password'] is None:
+            data['password'] = os.environ.get('NEXUS_PASSWORD')
+        if 'cert_path' not in data or data['cert_path'] is None:
+            data['cert_path'] = os.environ.get('NEXUS_CERT_PATH')
+        super().__init__(**data)
+
+
 class Settings(BaseModel):
     server: ServerConfig = ServerConfig()
     cors: CorsConfig = CorsConfig()
@@ -78,6 +101,7 @@ class Settings(BaseModel):
     logging: LoggingConfig = LoggingConfig()
     caching: CachingConfig = CachingConfig()
     security: SecurityConfig = SecurityConfig()
+    nexus: NexusConfig = NexusConfig()
 
     @classmethod
     def from_yaml(cls, config_path: str = None):
