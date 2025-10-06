@@ -10,6 +10,7 @@ import logging.config
 from app.core.config import settings
 from app.api import router as api_router
 from app.dependencies import get_llama_handler, cleanup_llama_handler
+from app.services.nexus_client import download_model_from_nexus_if_needed
 
 from fastapi import Request
 
@@ -41,6 +42,11 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     # Инициализация при запуске
     try:
+        # Загружаем модель из Nexus при необходимости
+        if not download_model_from_nexus_if_needed():
+            logger.error("Failed to download model from Nexus")
+            raise RuntimeError("Failed to download model from Nexus")
+        
         # Инициализируем обработчик LLM
         await get_llama_handler()
         logger.info("Application started successfully")

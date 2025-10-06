@@ -44,6 +44,18 @@ ReDoc: http://localhost:8000/redoc
    - default_temperature: Температура по умолчанию
    - default_max_tokens: Максимальное количество токенов по умолчанию
 
+5. **nexus** - Настройки Nexus (опционально)
+   - enabled: Включить/выключить загрузку моделей из Nexus
+   - url: URL сервера Nexus
+   - repo: Название репозитория
+   - name: Название артефакта
+   - id: ID артефакта
+   - version: Версия артефакта
+   - file_name: Имя файла артефакта
+   - login: Логин для аутентификации в Nexus (опционально)
+   - password: Пароль для аутентификации в Nexus (опционально)
+   - cert_path: Путь к сертификату для SSL аутентификации (опционально)
+
 ## Конфигурация
 
 Все настройки приложения теперь хранятся в YAML файле `config/config.yml`.
@@ -146,6 +158,11 @@ python models/download_model.py \
   --model-url https://huggingface.co/lmstudio-community/Qwen3-4B-Instruct-2507-GGUF/resolve/main/Qwen3-4B-Instruct-2507-Q8_0.gguf \
   --output-path models/Qwen3-4B-Instruct-2507-Q8_0.gguf
 ```
+
+Альтернативно, вы можете настроить загрузку модели из Nexus при запуске сервиса,
+установив параметры в разделе `nexus` конфигурационного файла `config/config.yml`
+и включив опцию `nexus.enabled: true`. В этом случае модель будет автоматически
+загружаться при старте сервиса, если её ещё нет локально.
 
 ## Сборка и запуск образа
 Соберите образ:

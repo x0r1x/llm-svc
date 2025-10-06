@@ -97,3 +97,29 @@ def get_nexus_client() -> NexusClient:
     if _nexus_client is None:
         _nexus_client = NexusClient()
     return _nexus_client
+
+
+def download_model_from_nexus_if_needed():
+    """
+    Загрузка модели из Nexus при необходимости (если файл не существует локально)
+    
+    Returns:
+        bool: True если загрузка была успешной или не требовалась, False в случае ошибки
+    """
+    from app.core.config import get_settings
+    settings = get_settings()
+    
+    # Проверяем, включена ли загрузка из Nexus
+    if not settings.nexus.enabled:
+        return True
+    
+    model_path = settings.model.path
+    
+    # Проверяем, существует ли файл модели локально
+    if os.path.exists(model_path):
+        print(f"Model file already exists at {model_path}")
+        return True
+    
+    # Создаем клиент Nexus и загружаем модель
+    nexus_client = get_nexus_client()
+    return nexus_client.download_artifact(model_path)
