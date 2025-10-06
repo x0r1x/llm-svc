@@ -69,15 +69,15 @@ class SecurityConfig(BaseModel):
 
 
 class Settings(BaseModel):
-    server: ServerConfig
-    cors: CorsConfig
-    model: ModelConfig
-    generation: GenerationConfig
-    app: AppConfig
-    monitoring: MonitoringConfig
-    logging: LoggingConfig
-    caching: CachingConfig
-    security: SecurityConfig
+    server: ServerConfig = ServerConfig()
+    cors: CorsConfig = CorsConfig()
+    model: ModelConfig = ModelConfig()
+    generation: GenerationConfig = GenerationConfig()
+    app: AppConfig = AppConfig()
+    monitoring: MonitoringConfig = MonitoringConfig()
+    logging: LoggingConfig = LoggingConfig()
+    caching: CachingConfig = CachingConfig()
+    security: SecurityConfig = SecurityConfig()
 
     @classmethod
     def from_yaml(cls, config_path: str = None):
@@ -97,11 +97,14 @@ class Settings(BaseModel):
                     break
             else:
                 # Если файл не найден, используем значения по умолчанию
+                # Просто возвращаем класс, поля инициализируются автоматически
                 return cls()
 
         try:
             with open(config_path, 'r') as f:
                 config_data = yaml.safe_load(f)
+                if config_data is None:
+                    config_data = {}
                 return cls(**config_data)
         except Exception as e:
             raise ValueError(f"Error loading config from {config_path}: {str(e)}")
