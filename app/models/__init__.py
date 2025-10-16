@@ -2,6 +2,6 @@
 Pydantic models module.
 """
 
-from .schemas import ChatRequest, ChatResponse, HealthResponse, ModelsListResponse
+from .schemas import ChatCompletionRequest, ChatResponse, HealthResponse, ModelsListResponse
 
-__all__ = ["ChatRequest", "ChatResponse", "HealthResponse", "ModelsListResponse"]
+__all__ = ["ChatCompletionRequest", "ChatResponse", "HealthResponse", "ModelsListResponse"]

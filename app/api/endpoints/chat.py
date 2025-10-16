@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
-from app.models.schemas import ChatRequest
+from app.models.schemas import ChatCompletionRequest
 from app.services.llama_handler import LlamaHandler
 from app.api.dependencies import get_llama_service, require_api_key
 import logging
@@ -10,7 +10,7 @@ router = APIRouter()
 
 @router.post("/chat/completions")
 async def chat_completion(
-    request: ChatRequest,
+    request: ChatCompletionRequest,
     llama_service: LlamaHandler = Depends(get_llama_service),
     api_key: bool = Depends(require_api_key),
 ):
@@ -21,7 +21,8 @@ async def chat_completion(
     logger.info(f"Chat request Model: {request.model}, "
                 f"Messages: {len(request.messages)}, "
                 f"Temperature: {request.temperature}, "
-                f"Stream: {request.stream}")
+                f"Stream: {request.stream}, "
+                f"Tools: {len(request.tools) if request.tools else 0}")
     try:
         if request.stream:
             # Потоковый режим - возвращаем StreamingResponse
@@ -29,7 +30,9 @@ async def chat_completion(
                 messages=request.messages,
                 temperature=request.temperature,
                 max_tokens=request.max_tokens,
-                stream=True
+                stream=True,
+                tools=request.tools,  # Передаем инструменты
+                tool_choice=request.tool_choice  # Передаем выбор инструмента
             )
             return StreamingResponse(
                 response_generator,
@@ -41,7 +44,9 @@ async def chat_completion(
                 messages=request.messages,
                 temperature=request.temperature,
                 max_tokens=request.max_tokens,
-                stream=False
+                stream=False,
+                tools=request.tools,          # Передаем инструменты
+                tool_choice=request.tool_choice  # Передаем выбор инструмента
             )
             logger.info("Chat request: Response generated successfully")
             return response

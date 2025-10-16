@@ -5,7 +5,7 @@ import asyncio
 import time
 import logging
 
-from app.models.schemas import ChatResponse, ChatChoice, Message, UsageInfo
+from app.models.schemas import ChatResponse, ChatChoice, Message, UsageInfo, ToolDefinition
 from app.utils import convert_to_dict_messages, convert_to_chat_completion_messages
 from app.core.config import settings
 
@@ -67,18 +67,30 @@ class LlamaHandler:
 
     async def _try_create_completion(self, messages: List[Message],
                                      temperature: float, max_tokens: int,
-                                     stream: bool) -> Union[Dict[str, Any], AsyncGenerator[Dict[str, Any], None]]:
+                                     stream: bool, tools: Optional[List[ToolDefinition]] = None,
+                                     tool_choice: Optional[Union[str, Dict]] = None
+                                     ) -> Union[Dict[str, Any], AsyncGenerator[Dict[str, Any], None]]:
         """Попытка создания завершения чата с обработкой разных форматов сообщений."""
 
         # Создаем функцию для создания completion
-        def create_completion( messages_formatter: Callable):
+        def create_completion(messages_formatter: Callable):
             formatted_messages = messages_formatter(messages)
-            return self.model.create_chat_completion(
-                messages=formatted_messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                stream=stream
-            )
+
+            # Базовые параметры
+            completion_params = {
+                "messages": formatted_messages,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+                "stream": stream
+            }
+
+            # Добавляем инструменты, если они переданы
+            if tools:
+                completion_params["tools"] = [tool.dict() for tool in tools]
+            if tool_choice:
+                completion_params["tool_choice"] = tool_choice
+
+            return self.model.create_chat_completion(**completion_params)
 
         try:
             # Пробуем использовать формат словарей
@@ -91,10 +103,14 @@ class LlamaHandler:
             else:
                 raise e
 
-    async def generate_response(self, messages: List[Message],
-                                temperature: Optional[float] = None,
-                                max_tokens: Optional[int] = None,
-                                stream: bool = False) -> Union[ChatResponse, AsyncGenerator[str, None]]:
+    async def generate_response(
+            self, messages: List[Message],
+            temperature: Optional[float] = None,
+            max_tokens: Optional[int] = None,
+            stream: bool = False,
+            tools: Optional[List[ToolDefinition]] = None,  # Новый параметр
+            tool_choice: Optional[Union[str, Dict]] = None  # Новый параметр
+    ) -> Union[ChatResponse, AsyncGenerator[str, None]]:
         """Универсальный метод для генерации ответа, поддерживающий оба режима."""
         if not self.is_loaded():
             raise ValueError("Model not loaded")
@@ -108,7 +124,7 @@ class LlamaHandler:
         if stream:
             # Потоковый режим - возвращаем асинхронный генератор
             stream_result = await self._try_create_completion(
-                messages, temperature, max_tokens, stream=True
+                messages, temperature, max_tokens, stream=True, tools=tools, tool_choice=tool_choice
             )
 
             async def stream_generator():
@@ -134,7 +150,7 @@ class LlamaHandler:
         else:
             # Обычный режим - возвращаем готовый ответ
             response = await self._try_create_completion(
-                messages, temperature, max_tokens, stream=False
+                messages, temperature, max_tokens, stream=False, tools=tools, tool_choice=tool_choice
             )
 
             processing_time = time.time() - start_time
@@ -147,17 +163,24 @@ class LlamaHandler:
         choice = raw_response["choices"][0]
         message = choice["message"]
 
+        # Создаем базовый объект Message
+        message_obj = Message(
+            role=message["role"],
+            content=message.get("content")
+        )
+
+        # Добавляем tool_calls, если они есть в ответе
+        if "tool_calls" in message and message["tool_calls"]:
+            message_obj.tool_calls = message["tool_calls"]
+
         return ChatResponse(
-            id=f"chatcmpl-{int(time.time())}",
-            created=int(time.time()),
+            id=raw_response.get("id", f"chatcmpl-{int(time.time())}"),
+            created=raw_response.get("created", int(time.time())),
             model=self.model_name,
             choices=[
                 ChatChoice(
                     index=0,
-                    message=Message(
-                        role=message["role"],
-                        content=message["content"]
-                    ),
+                    message=message_obj,
                     finish_reason=choice.get("finish_reason", "stop")
                 )
             ],
