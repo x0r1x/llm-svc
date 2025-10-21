@@ -2,25 +2,21 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Literal, Dict, Any, Union
 from enum import Enum
 
-class FunctionDefinition(BaseModel):
-    """Определение отдельной функции."""
-    name: str = Field(..., description="Название функции")
-    description: Optional[str] = Field(None, description="Описание функции")
-    parameters: Optional[Dict[str, Any]] = Field(None, description="JSON Schema параметров функции")
-
 class FunctionCall(BaseModel):
-    """Вызов конкретной функции с аргументами."""
     name: str = Field(..., description="Название вызываемой функции")
     arguments: str = Field(..., description="Аргументы функции в формате JSON строки")
 
 class ToolCall(BaseModel):
-    """Вызов инструмента (обертка для function call)."""
     id: str = Field(..., description="Уникальный идентификатор вызова инструмента")
     type: Literal["function"] = "function"
     function: FunctionCall
 
+class FunctionDefinition(BaseModel):
+    name: str = Field(..., description="Название функции")
+    description: Optional[str] = Field(None, description="Описание функции")
+    parameters: Optional[Dict[str, Any]] = Field(None, description="JSON Schema параметров функции")
+
 class ToolDefinition(BaseModel):
-    """Определение инструмента (в OpenAI API инструментом является функция)."""
     type: Literal["function"] = "function"
     function: FunctionDefinition
 
@@ -32,8 +28,10 @@ class MessageRole(str, Enum):
     TOOL = "tool"
 
 class Message(BaseModel):
-    role: Literal["system", "user", "assistant", "function", "tool"]
-    content: str
+    role: MessageRole
+    content: Optional[str] = None
+    tool_calls: Optional[List[ToolCall]] = None
+    name: Optional[str] = None
 
 class ChatCompletionRequestSystemMessage(BaseModel):
     role: Literal["system"] = "system"
@@ -67,26 +65,56 @@ class ChatCompletionRequest(BaseModel):
     max_tokens: Optional[int] = Field(256, ge=1)
     stream: Optional[bool] = False
     tools: Optional[List[ToolDefinition]] = None
-    tool_choice: Optional[Union[Literal["none", "auto"], Dict[str, Any]]] = None
+    #tool_choice: Optional[Union[Literal["none", "auto"], Dict[str, Any]]] = "auto"
 
-class ChatChoice(BaseModel):
+# class ChatChoice(BaseModel):
+#     index: int
+#     message: Message
+#     finish_reason: Optional[str] = "stop"
+#     delta: Optional[Dict[str, Any]] = None
+#
+# class UsageInfo(BaseModel):
+#     prompt_tokens: int
+#     completion_tokens: int
+#     total_tokens: int
+#
+# class ChatResponse(BaseModel):
+#     id: str
+#     object: str = "chat.completion"
+#     created: int
+#     model: str
+#     choices: List[ChatChoice]
+#     usage: UsageInfo
+
+class ChatCompletionResponseChoice(BaseModel):
     index: int
     message: Message
-    finish_reason: Optional[str] = "stop"
-    delta: Optional[Dict[str, Any]] = None
+    finish_reason: Optional[str] = None
 
 class UsageInfo(BaseModel):
     prompt_tokens: int
     completion_tokens: int
     total_tokens: int
 
-class ChatResponse(BaseModel):
+class ChatCompletionResponse(BaseModel):
     id: str
     object: str = "chat.completion"
     created: int
     model: str
-    choices: List[ChatChoice]
+    choices: List[ChatCompletionResponseChoice]
     usage: UsageInfo
+
+class ChatCompletionChunkChoice(BaseModel):
+    index: int
+    delta: Dict[str, Any]
+    finish_reason: Optional[str] = None
+
+class ChatCompletionChunk(BaseModel):
+    id: str
+    object: str = "chat.completion.chunk"
+    created: int
+    model: str
+    choices: List[ChatCompletionChunkChoice]
 
 class HealthResponse(BaseModel):
     status: str

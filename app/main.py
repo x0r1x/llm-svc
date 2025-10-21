@@ -32,6 +32,23 @@ logging.config.dictConfig({
     'root': {
         'handlers': ['console'],
         'level': settings.logging.level
+    },
+    'loggers': {
+        'app': {
+            'handlers': ['console'],
+            'level': settings.logging.level,
+            'propagate': False
+        },
+        'app.api': {
+            'handlers': ['console'],
+            'level': settings.logging.level,
+            'propagate': False
+        },
+        'app.services': {
+            'handlers': ['console'],
+            'level': settings.logging.level,
+            'propagate': False
+        }
     }
 })
 
@@ -94,16 +111,14 @@ app = create_application()
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
-    """Middleware для логирования всех запросов и ответов"""
+    """Middleware для логирования всех запросов, ответов и их результатов"""
     request_id = str(uuid.uuid4())
     start_time = time.time()
 
     # Логирование входящего запроса
     logger.info(f"Request {request_id}: {request.method} {request.url}")
-    logger.info(f"Request {request_id}: Headers: {dict(request.headers)}")
 
     try:
-        # Чтение тела запроса для POST запросов
         if request.method == "POST":
             body = await request.body()
             if body:
@@ -112,6 +127,7 @@ async def log_requests(request: Request, call_next):
                     logger.info(f"Request {request_id}: Body: {json.dumps(body_json, ensure_ascii=False)}")
                 except json.JSONDecodeError:
                     logger.info(f"Request {request_id}: Body: {body.decode()}")
+            request._body = body
     except Exception as e:
         logger.error(f"Request {request_id}: Error reading body: {str(e)}")
 
@@ -123,6 +139,7 @@ async def log_requests(request: Request, call_next):
     logger.info(f"Request {request_id}: Response status: {response.status_code}")
     logger.info(f"Request {request_id}: Process time: {process_time:.2f}s")
 
+    # Убираем логирование тела ответа для избежания проблем
     return response
 
 if __name__ == "__main__":
