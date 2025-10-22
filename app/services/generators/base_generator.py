@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from app.models.schemas import Message, ToolDefinition
 from app.services.tool_call_processor import ToolCallProcessor
 import logging
@@ -29,26 +29,41 @@ class BaseResponseGenerator(ABC):
         """Определяет, нужно ли использовать инструменты"""
         return tools is not None and len(tools) > 0
 
+    def _convert_messages_to_dict(self, messages: List[Message]) -> List[Dict[str, Any]]:
+        """Конвертирует Pydantic сообщения в словари для llama_cpp"""
+        result = []
+        for message in messages:
+            message_dict = {
+                "role": message.role.value,  # Используем .value для enum
+                "content": message.content
+            }
+            # Добавляем опциональные поля если они есть
+            if message.name is not None:
+                message_dict["name"] = message.name
+            if message.tool_calls is not None:
+                message_dict["tool_calls"] = [
+                    tool_call.model_dump() for tool_call in message.tool_calls
+                ]
+            result.append(message_dict)
+        return result
+
     def _prepare_generation_params(self, messages, temperature, max_tokens, tools):
         """Подготавливает параметры для генерации (общая логика)"""
         logger.info(f"Preparing generation params for {self.__class__.__name__}")
 
+        # Конвертируем сообщения в словари
+        messages_dict = self._convert_messages_to_dict(messages)
+        logger.info(f"Messages dict: {messages_dict}")
+
         params = {
-            "messages": messages,
+            "messages": messages_dict, #messages
             "temperature": temperature,
             "max_tokens": max_tokens,
         }
 
-        # Преобразуем инструменты в словари, если они переданы
-        tools_dict = None
-        if tools:
-            tools_dict = [tool.model_dump() for tool in tools]
-
-        logger.info(f"Tools: {tools_dict}")
-
         # Добавляем инструменты, если они переданы
         if self._should_use_tools(tools):
-            params["tools"] = tools_dict
+            params["tools"] = [tool.model_dump() for tool in tools]
             params["tool_choice"] = "auto"
             logger.info(f"Tools enabled: {[tool.function.name for tool in tools]}")
 

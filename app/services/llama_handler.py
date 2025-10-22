@@ -53,7 +53,8 @@ class LlamaHandler:
                     n_threads_batch=7,
                     n_ctx=self.n_ctx,
                     n_gpu_layers=self.n_gpu_layers,
-                    verbose=self.verbose
+                    verbose=self.verbose,
+                    chat_format="chatml-function-calling"
                 )
             )
             self.is_initialized = True

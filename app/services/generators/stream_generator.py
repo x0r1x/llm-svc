@@ -25,21 +25,31 @@ class StreamResponseGenerator(BaseResponseGenerator):
         """Генерация потокового ответа"""
         logger.info("Starting stream generation")
 
+        # Проверяем, не используются ли инструменты в потоковом режиме
+        if self._should_use_tools(tools):
+            yield self._create_error_chunk(
+                f"chatcmpl-{uuid.uuid4().hex}",
+                "Streaming is not supported when tools are provided. Use stream=false."
+            )
+            return
+
         start_time = time.time()
         response_id = f"chatcmpl-{uuid.uuid4().hex}"
 
         try:
-            # Подготавливаем параметры
+            # Подготавливаем параметры (без инструментов для потокового режима)
             params = self._prepare_generation_params(
-                messages, temperature, max_tokens, tools
+                messages, temperature, max_tokens, None
             )
 
             # Получаем потоковый результат
-            stream_generator = self._completion_caller(**params)
+            async for chunk in self._completion_caller(**params):
+                processed_chunk = self._process_chunk(chunk, response_id)
+                if processed_chunk:
+                    yield processed_chunk
 
-            # Обрабатываем поток
-            async for chunk in self._process_stream(stream_generator, response_id):
-                yield chunk
+            # Завершающий чанк
+            yield "data: [DONE]\n\n"
 
             processing_time = time.time() - start_time
             logger.info(f"Stream response generated in {processing_time:.2f}s")
@@ -48,33 +58,15 @@ class StreamResponseGenerator(BaseResponseGenerator):
             logger.error(f"Stream generation error: {str(e)}", exc_info=True)
             yield self._create_error_chunk(response_id, str(e))
 
-    async def _process_stream(
-            self,
-            stream_generator: AsyncGenerator[Dict[str, Any], None],
-            response_id: str
-    ) -> AsyncGenerator[str, None]:
-        """Обрабатывает потоковый результат"""
-        try:
-            async for chunk in stream_generator:
-                processed_chunk = self._process_chunk(chunk, response_id)
-                if processed_chunk:
-                    yield processed_chunk
-
-            # Завершающий чанк
-            yield "data: [DONE]\n\n"
-
-        except Exception as e:
-            logger.error(f"Error processing stream: {e}")
-            yield self._create_error_chunk(response_id, str(e))
-
     def _process_chunk(self, chunk: Dict[str, Any], response_id: str) -> Optional[str]:
-        """Обрабатывает отдельный чанк"""
+        """Обрабатывает отдельный чанк - прямая передача данных"""
         if not chunk:
             return None
 
-        # Обновляем метаданные чанка
+        # Обновляем только необходимые метаданные
         chunk['id'] = response_id
-        chunk['model'] = self.model_name
+        if 'model' not in chunk:
+            chunk['model'] = self.model_name
 
         return f"data: {json.dumps(chunk)}\n\n"
 

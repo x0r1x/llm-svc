@@ -39,6 +39,7 @@ class NonStreamResponseGenerator(BaseResponseGenerator):
 
             # Вызываем completion
             response = await self._completion_caller(**params, stream=False)
+            logger.info(f"Model response: {response}")
 
             # Обрабатываем ответ
             processed_response = self._process_response(response, tools)
@@ -58,16 +59,27 @@ class NonStreamResponseGenerator(BaseResponseGenerator):
             tools: Optional[List[ToolDefinition]]
     ) -> ChatCompletionResponse:
         """Обрабатывает raw response от модели"""
-        content = response['choices'][0]['message'].get('content', '')
-        finish_reason = response['choices'][0].get('finish_reason', 'stop')
+        # Используем данные напрямую из ответа модели
+        choices_data = response.get('choices', [{}])[0]
+        message_data = choices_data.get('message', {})
+        finish_reason = choices_data.get('finish_reason', 'stop')
+        content = message_data.get('content')
+        tool_calls = message_data.get('tool_calls')
 
         # Обрабатываем tool calls если есть инструменты
-        tool_calls = None
+        #tool_calls = None
         if self._should_use_tools(tools) and content:
             cleaned_content, tool_calls = self.tool_processor.extract_tool_calls(content)
             if tool_calls:
                 content = cleaned_content
                 finish_reason = "tool_calls"
+
+        # Создаем сообщение ассистента
+        assistant_message = Message(
+            role=MessageRole.ASSISTANT,
+            content=content,
+            tool_calls=tool_calls
+        )
 
         return ChatCompletionResponse(
             id=response.get('id', f"chatcmpl-{uuid.uuid4().hex}"),
@@ -77,11 +89,7 @@ class NonStreamResponseGenerator(BaseResponseGenerator):
             choices=[
                 ChatCompletionResponseChoice(
                     index=0,
-                    message=Message(
-                        role=MessageRole.ASSISTANT,
-                        content=content,
-                        tool_calls=tool_calls
-                    ),
+                    message=assistant_message,
                     finish_reason=finish_reason
                 )],
             usage=UsageInfo(
