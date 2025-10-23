@@ -77,24 +77,6 @@ class LlamaHandler:
             return
 
         try:
-            # Используем путь из настроек
-            # template_path = Path(self.chat_template_path)
-            #
-            # if not template_path.exists():
-            #     raise FileNotFoundError(f"Chat template not found at: {template_path}")
-            #
-            # logger.info(f"Loading chat template from: {template_path}")
-            #
-            # with open(template_path, 'r', encoding='utf-8') as f:
-            #     template_str = f.read()
-            #
-            # custom_chat_formatter = Jinja2ChatFormatter(
-            #     template=template_str,
-            #     eos_token="<|im_end|>",
-            #     bos_token="<|im_start|>",
-            #     add_generation_prompt=True
-            # ).to_chat_handler()
-
             logger.info(f"Loading model from {self.model_path}")
             loop = asyncio.get_event_loop()
             self.model = await loop.run_in_executor(
