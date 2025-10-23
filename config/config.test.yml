@@ -14,6 +14,8 @@ cors:
 model:
   path: "/dev/null"  # Фейковый путь для тестов
   name: "test-model"  # Важно: это значение должно совпадать с тестами
+  chat_format: "chatml"
+  chat_template_path: "/app/services/chat-format-template/qwen3_chat_format_template.jinja"
   ctx_size: 512
   gpu_layers: 0
   verbose: false

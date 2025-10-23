@@ -19,6 +19,8 @@ cors:
 model:
   path: "/app/models/llama-2-7b-chat.Q4_K_M.gguf"
   name: "llama-2-7b-chat"
+  chat_format: "chatml-function-calling"
+  chat_template_path: "/app/services/chat-format-template/qwen3_chat_format_template.jinja"
   ctx_size: 4096
   gpu_layers: 0
   verbose: false

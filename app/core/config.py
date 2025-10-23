@@ -25,6 +25,8 @@ class CorsConfig(BaseModel):
 class ModelConfig(BaseModel):
     path: str = "/app/models/llama-2-7b-chat.Q4_K_M.gguf"
     name: str = "llama-2-7b-chat"
+    chat_template_path: str = None
+    chat_format: str = None
     ctx_size: int = 4096
     gpu_layers: int = 0
     verbose: bool = False

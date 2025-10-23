@@ -14,43 +14,60 @@ from app.services.nexus_client import download_model_from_nexus_if_needed
 
 from fastapi import Request
 
-# Настройка логирования из конфига
-logging.config.dictConfig({
-    'version': 1,
-    'formatters': {
-        'default': {
-            'format': settings.logging.format
-        }
-    },
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-            'formatter': 'default',
+# Настройка логирования
+def setup_logging():
+    """Настройка централизованного логирования для всего приложения"""
+    logging.config.dictConfig({
+        'version': 1,
+        'disable_existing_loggers': False,  # Важно: не отключаем существующие логгеры
+        'formatters': {
+            'default': {
+                'format': settings.logging.format
+            }
+        },
+        'handlers': {
+            'console': {
+                'class': 'logging.StreamHandler',
+                'formatter': 'default',
+                'level': settings.logging.level,
+                'stream': 'ext://sys.stdout'
+            }
+        },
+        'root': {
+            'handlers': ['console'],
             'level': settings.logging.level
-        }
-    },
-    'root': {
-        'handlers': ['console'],
-        'level': settings.logging.level
-    },
-    'loggers': {
-        'app': {
-            'handlers': ['console'],
-            'level': settings.logging.level,
-            'propagate': False
         },
-        'app.api': {
-            'handlers': ['console'],
-            'level': settings.logging.level,
-            'propagate': False
-        },
-        'app.services': {
-            'handlers': ['console'],
-            'level': settings.logging.level,
-            'propagate': False
+        'loggers': {
+            'app': {
+                'handlers': ['console'],
+                'level': settings.logging.level,
+                'propagate': False
+            },
+            'app.api': {
+                'handlers': ['console'],
+                'level': settings.logging.level,
+                'propagate': False
+            },
+            'app.services': {
+                'handlers': ['console'],
+                'level': settings.logging.level,
+                'propagate': False
+            },
+            'app.services.llama_handler': {  # Явно настраиваем логгер для llama_handler
+                'handlers': ['console'],
+                'level': settings.logging.level,
+                'propagate': False
+            },
+            '__main__': {
+                'handlers': ['console'],
+                'level': settings.logging.level,
+                'propagate': False
+            }
         }
-    }
-})
+    })
+
+# Настраиваем логирование при импорте модуля
+setup_logging()
 
 logger = logging.getLogger(__name__)
 

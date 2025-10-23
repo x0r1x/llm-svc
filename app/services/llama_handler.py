@@ -1,12 +1,16 @@
-from llama_cpp import Llama
-from typing import List, Dict, Any, Optional, Callable, AsyncGenerator, Union
 import asyncio
 import logging
+from pathlib import Path
+from typing import List, Dict, Any, Optional, Callable, AsyncGenerator
 
-from app.models.schemas import Message, ToolDefinition, ChatCompletionResponse
+from llama_cpp import Llama
+from llama_cpp.llama_chat_format import Jinja2ChatFormatter
+
 from app.core.config import settings
+from app.models.schemas import Message, ToolDefinition, ChatCompletionResponse
 from .generators.non_stream_generator import NonStreamResponseGenerator
 from .generators.stream_generator import StreamResponseGenerator
+
 logger = logging.getLogger(__name__)
 
 
@@ -17,6 +21,8 @@ class LlamaHandler:
         self.model: Optional[Llama] = None
         self.model_path = settings.model.path
         self.model_name = settings.model.name
+        self.chat_template_path = settings.model.chat_template_path
+        self.chat_format = settings.model.chat_format
         self.n_ctx = settings.model.ctx_size
         self.n_gpu_layers = settings.model.gpu_layers
         self.verbose = settings.model.verbose
@@ -37,12 +43,58 @@ class LlamaHandler:
             cls._instance = cls()
         return cls._instance
 
+    def _load_chat_handler(self, chat_template_path: str) -> Any:
+        """
+        Загрузка и настройка chat handler из шаблона.
+        Отдельная функция для соблюдения принципа единственной ответственности.
+        """
+        if not chat_template_path:
+            return
+
+        template_path = Path(chat_template_path)
+
+        if not template_path.exists():
+            raise FileNotFoundError(f"Chat template not found at: {template_path}")
+
+        logger.info(f"Loading chat template from: {template_path}")
+
+        with open(template_path, 'r', encoding='utf-8') as f:
+            template_str = f.read()
+
+        custom_chat_formatter = Jinja2ChatFormatter(
+            template=template_str,
+            eos_token="<|im_end|>",
+            bos_token="<|im_start|>",
+            add_generation_prompt=True
+        ).to_chat_handler()
+
+        logger.info("Chat handler loaded successfully")
+        return custom_chat_formatter
+
     async def initialize(self):
         """Асинхронная инициализация модели."""
         if self.is_initialized:
             return
 
         try:
+            # Используем путь из настроек
+            # template_path = Path(self.chat_template_path)
+            #
+            # if not template_path.exists():
+            #     raise FileNotFoundError(f"Chat template not found at: {template_path}")
+            #
+            # logger.info(f"Loading chat template from: {template_path}")
+            #
+            # with open(template_path, 'r', encoding='utf-8') as f:
+            #     template_str = f.read()
+            #
+            # custom_chat_formatter = Jinja2ChatFormatter(
+            #     template=template_str,
+            #     eos_token="<|im_end|>",
+            #     bos_token="<|im_start|>",
+            #     add_generation_prompt=True
+            # ).to_chat_handler()
+
             logger.info(f"Loading model from {self.model_path}")
             loop = asyncio.get_event_loop()
             self.model = await loop.run_in_executor(
@@ -53,8 +105,9 @@ class LlamaHandler:
                     n_threads_batch=7,
                     n_ctx=self.n_ctx,
                     n_gpu_layers=self.n_gpu_layers,
+                    chat_handler=self._load_chat_handler(self.chat_template_path), #custom_chat_formatter,
+                    chat_format=self.chat_format,
                     verbose=self.verbose,
-                    chat_format="chatml-function-calling"
                 )
             )
             self.is_initialized = True
