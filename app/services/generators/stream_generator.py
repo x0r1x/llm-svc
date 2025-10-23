@@ -65,8 +65,7 @@ class StreamResponseGenerator(BaseResponseGenerator):
 
         # Обновляем только необходимые метаданные
         chunk['id'] = response_id
-        if 'model' not in chunk:
-            chunk['model'] = self.model_name
+        chunk['model'] = self.model_name
 
         return f"data: {json.dumps(chunk)}\n\n"
 

@@ -85,7 +85,7 @@ class NonStreamResponseGenerator(BaseResponseGenerator):
             id=response.get('id', f"chatcmpl-{uuid.uuid4().hex}"),
             object="chat.completion",
             created=response.get('created', int(time.time())),
-            model=response.get('model', self.model_name),
+            model=response.get(self.model_name),
             choices=[
                 ChatCompletionResponseChoice(
                     index=0,
