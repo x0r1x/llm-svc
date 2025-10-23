@@ -1,3 +1,5 @@
+import uuid
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from app.models.schemas import ChatCompletionRequest
@@ -19,6 +21,10 @@ async def chat_completion(
     Эндпоинт совместимый с OpenAI API для обработки запросов чата.
     Поддерживает как обычные запросы, так и потоковую передачу.
     """
+
+    # Генерируем уникальный session_id для каждого запроса
+    session_id = f"req_{uuid.uuid4().hex}"
+
     logger.info(f"Chat request Model: {request.model}, "
                 f"Messages: {len(request.messages)}, "
                 f"Temperature: {request.temperature}, "
@@ -35,7 +41,8 @@ async def chat_completion(
                 messages=request.messages,
                 temperature=request.temperature,
                 max_tokens=request.max_tokens,
-                tools=request.tools
+                tools=request.tools,
+                session_id=session_id
             )
             return StreamingResponse(
                 response_generator,
@@ -51,7 +58,8 @@ async def chat_completion(
                 messages=request.messages,
                 temperature=request.temperature,
                 max_tokens=request.max_tokens,
-                tools=request.tools
+                tools=request.tools,
+                session_id=session_id
             )
             logger.info("Chat request: Response generated successfully")
             return response

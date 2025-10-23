@@ -10,9 +10,10 @@ logger = logging.getLogger(__name__)
 class BaseResponseGenerator(ABC):
     """Абстрактный базовый класс для всех генераторов ответов"""
 
-    def __init__(self, model_name: str):
+    def __init__(self, model_name: str, completion_caller):
         self.model_name = model_name
         self.tool_processor = ToolCallProcessor()
+        self._completion_caller = completion_caller
 
     @abstractmethod
     async def generate(
@@ -20,7 +21,8 @@ class BaseResponseGenerator(ABC):
             messages: List[Message],
             temperature: float,
             max_tokens: int,
-            tools: Optional[List[ToolDefinition]] = None
+            tools: Optional[List[ToolDefinition]] = None,
+            session_id: str = None
     ):
         """Абстрактный метод генерации ответа"""
         pass
@@ -34,7 +36,7 @@ class BaseResponseGenerator(ABC):
         result = []
         for message in messages:
             message_dict = {
-                "role": message.role.value,  # Используем .value для enum
+                "role": message.role.value,
                 "content": message.content
             }
             # Добавляем опциональные поля если они есть
@@ -56,7 +58,7 @@ class BaseResponseGenerator(ABC):
         logger.info(f"Messages dict: {messages_dict}")
 
         params = {
-            "messages": messages_dict, #messages
+            "messages": messages_dict,
             "temperature": temperature,
             "max_tokens": max_tokens,
         }
@@ -68,5 +70,4 @@ class BaseResponseGenerator(ABC):
             logger.info(f"Tools enabled: {[tool.function.name for tool in tools]}")
 
         logger.info(f"Completion params: {params}")
-
         return params

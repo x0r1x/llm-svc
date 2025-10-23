@@ -14,16 +14,13 @@ logger = logging.getLogger(__name__)
 class NonStreamResponseGenerator(BaseResponseGenerator):
     """Генератор не-потоковых ответов"""
 
-    def __init__(self, model_name: str, completion_caller):
-        super().__init__(model_name)
-        self._completion_caller = completion_caller
-
     async def generate(
             self,
             messages: List[Message],
             temperature: float,
             max_tokens: int,
-            tools: Optional[List[ToolDefinition]] = None
+            tools: Optional[List[ToolDefinition]] = None,
+            session_id: str = None
     ) -> ChatCompletionResponse:
         """Генерация не-потокового ответа"""
         logger.info("Starting non-stream generation")
@@ -37,8 +34,8 @@ class NonStreamResponseGenerator(BaseResponseGenerator):
                 messages, temperature, max_tokens, tools
             )
 
-            # Вызываем completion
-            response = await self._completion_caller(**params, stream=False)
+            # Вызываем completion с session_id
+            response = await self._completion_caller(session_id, **params, stream=False)
             logger.info(f"Model response: {response}")
 
             # Обрабатываем ответ
@@ -59,7 +56,6 @@ class NonStreamResponseGenerator(BaseResponseGenerator):
             tools: Optional[List[ToolDefinition]]
     ) -> ChatCompletionResponse:
         """Обрабатывает raw response от модели"""
-        # Используем данные напрямую из ответа модели
         choices_data = response.get('choices', [{}])[0]
         message_data = choices_data.get('message', {})
         finish_reason = choices_data.get('finish_reason', 'stop')
@@ -67,11 +63,11 @@ class NonStreamResponseGenerator(BaseResponseGenerator):
         tool_calls = message_data.get('tool_calls')
 
         # Обрабатываем tool calls если есть инструменты
-        #tool_calls = None
         if self._should_use_tools(tools) and content:
-            cleaned_content, tool_calls = self.tool_processor.extract_tool_calls(content)
-            if tool_calls:
+            cleaned_content, extracted_tool_calls = self.tool_processor.extract_tool_calls(content)
+            if extracted_tool_calls:
                 content = cleaned_content
+                tool_calls = extracted_tool_calls
                 finish_reason = "tool_calls"
 
         # Создаем сообщение ассистента

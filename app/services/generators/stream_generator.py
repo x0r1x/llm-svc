@@ -11,16 +11,13 @@ logger = logging.getLogger(__name__)
 class StreamResponseGenerator(BaseResponseGenerator):
     """Генератор потоковых ответов"""
 
-    def __init__(self, model_name: str, completion_caller):
-        super().__init__(model_name)
-        self._completion_caller = completion_caller
-
     async def generate(
             self,
             messages: List[Message],
             temperature: float,
             max_tokens: int,
-            tools: Optional[List[ToolDefinition]] = None
+            tools: Optional[List[ToolDefinition]] = None,
+            session_id: str = None
     ) -> AsyncGenerator[str, None]:
         """Генерация потокового ответа"""
         logger.info("Starting stream generation")
@@ -42,8 +39,8 @@ class StreamResponseGenerator(BaseResponseGenerator):
                 messages, temperature, max_tokens, None
             )
 
-            # Получаем потоковый результат
-            async for chunk in self._completion_caller(**params):
+            # Получаем потоковый результат с session_id
+            async for chunk in self._completion_caller(session_id, **params):
                 processed_chunk = self._process_chunk(chunk, response_id)
                 if processed_chunk:
                     yield processed_chunk
