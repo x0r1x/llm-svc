@@ -34,12 +34,14 @@ class NonStreamResponseGenerator(BaseResponseGenerator):
                 messages, temperature, max_tokens, tools
             )
 
-            # Вызываем completion с session_id
-            response = await self._completion_caller(session_id, **params, stream=False)
-            logger.info(f"Model response: {response}")
+            logger.info(f"Calling model completion for session {session_id}")
+
+            # Вызываем completion с session_id через _completion_caller
+            response = await self._completion_caller(session_id, **params)
+            logger.info(f"Model response received, processing...")
 
             # Обрабатываем ответ
-            processed_response = self._process_response(response, tools)
+            processed_response = self._process_response(response, tools, response_id)
 
             processing_time = time.time() - start_time
             logger.info(f"Non-stream response generated in {processing_time:.2f}s")
@@ -53,32 +55,37 @@ class NonStreamResponseGenerator(BaseResponseGenerator):
     def _process_response(
             self,
             response: dict,
-            tools: Optional[List[ToolDefinition]]
+            tools: Optional[List[ToolDefinition]],
+            response_id: str
     ) -> ChatCompletionResponse:
         """Обрабатывает raw response от модели"""
+        if not response or 'choices' not in response or not response['choices']:
+            return self._create_error_response(response_id, "Invalid response from model")
+
         choices_data = response.get('choices', [{}])[0]
         message_data = choices_data.get('message', {})
         finish_reason = choices_data.get('finish_reason', 'stop')
-        content = message_data.get('content')
+        content = message_data.get('content', '')
         tool_calls = message_data.get('tool_calls')
 
         # Обрабатываем tool calls если есть инструменты
         if self._should_use_tools(tools) and content:
             cleaned_content, extracted_tool_calls = self.tool_processor.extract_tool_calls(content)
             if extracted_tool_calls:
-                content = cleaned_content
+                content = cleaned_content.strip() if cleaned_content else ''
                 tool_calls = extracted_tool_calls
                 finish_reason = "tool_calls"
+                logger.info(f"Extracted {len(extracted_tool_calls)} tool calls")
 
         # Создаем сообщение ассистента
         assistant_message = Message(
             role=MessageRole.ASSISTANT,
-            content=content,
+            content=content if content else None,
             tool_calls=tool_calls
         )
 
         return ChatCompletionResponse(
-            id=response.get('id', f"chatcmpl-{uuid.uuid4().hex}"),
+            id=response.get('id', response_id),
             object="chat.completion",
             created=response.get('created', int(time.time())),
             model=self.model_name,

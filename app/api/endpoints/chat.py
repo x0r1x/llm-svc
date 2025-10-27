@@ -3,8 +3,9 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from app.models.schemas import ChatCompletionRequest
-from app.services.llama_handler import LlamaHandler
-from app.api.dependencies import get_llama_service, require_api_key
+from app.services.models_service import LlamaService
+from app.api.dependencies import get_llama_service_handler, require_api_key_handler
+from app.exceptions import ServiceUnavailableError
 import logging
 
 logger = logging.getLogger(__name__)
@@ -14,8 +15,8 @@ router = APIRouter()
 @router.post("/chat/completions")
 async def chat_completion(
         request: ChatCompletionRequest,
-        llama_service: LlamaHandler = Depends(get_llama_service),
-        api_key: bool = Depends(require_api_key),
+        llama_service: LlamaService = Depends(get_llama_service_handler),
+        api_key: bool = Depends(require_api_key_handler),
 ):
     """
     Эндпоинт совместимый с OpenAI API для обработки запросов чата.
@@ -64,6 +65,12 @@ async def chat_completion(
             logger.info("Chat request: Response generated successfully")
             return response
 
+    except ServiceUnavailableError as e:
+        logger.warning(f"Service unavailable: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Service temporarily unavailable. Please try again later."
+        )
     except Exception as e:
         logger.error(f"Chat request Error: {str(e)}", exc_info=True)
         raise HTTPException(

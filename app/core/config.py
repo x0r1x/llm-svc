@@ -30,6 +30,11 @@ class ModelConfig(BaseModel):
     ctx_size: int = 4096
     gpu_layers: int = 0
     verbose: bool = False
+    pool_size: int = 1  # Размер пула моделей
+    n_thread: int = 1  # Количество потоков для CPU
+    n_threads_batch: int = 1  # Количество потоков для батчей
+    n_batch: int = 512  # Размер батча
+    n_ubatch: int = 512  # Размер микро-батча
 
 
 class GenerationConfig(BaseModel):

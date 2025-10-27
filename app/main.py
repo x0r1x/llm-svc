@@ -9,7 +9,7 @@ import logging.config
 
 from app.core.config import settings
 from app.api import router as api_router
-from app.dependencies import get_llama_handler, cleanup_llama_handler
+from app.dependencies import get_llama_service, cleanup_llama_service
 from app.services.nexus_client import download_model_from_nexus_if_needed
 
 from fastapi import Request
@@ -74,31 +74,43 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """
+    Lifespan менеджер для управления жизненным циклом приложения.
+    Отделяет инициализацию ресурсов от их использования в зависимостях.
+    """
     # Инициализация при запуске
     try:
+        logger.info("Starting application initialization...")
+
         # Загружаем модель из Nexus при необходимости
         if not download_model_from_nexus_if_needed():
             logger.error("Failed to download model from Nexus")
             raise RuntimeError("Failed to download model from Nexus")
-        
-        # Инициализируем обработчик LLM
-        await get_llama_handler()
+
+        # Предварительная инициализация сервиса LLM
+        llama_service = await get_llama_service()
+        await llama_service.initialize()
+
         logger.info("Application started successfully")
+
     except Exception as e:
         logger.error(f"Failed to initialize application: {str(e)}")
+        # Гарантируем очистку ресурсов при ошибке инициализации
+        await cleanup_llama_service()
         raise
 
-    yield
+    yield  # Приложение работает
 
     # Очистка при завершении
-    await cleanup_llama_handler()
-    logger.info("Application shut down gracefully")
+    try:
+        await cleanup_llama_service()
+        logger.info("Application shut down gracefully")
+    except Exception as e:
+        logger.error(f"Error during application shutdown: {str(e)}")
 
 
 def create_application() -> FastAPI:
     """Создание и настройка FastAPI приложения"""
-
-
     application = FastAPI(
         title=settings.app.title,
         description=settings.app.description,
@@ -122,9 +134,7 @@ def create_application() -> FastAPI:
 
     return application
 
-
 app = create_application()
-
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
@@ -156,7 +166,6 @@ async def log_requests(request: Request, call_next):
     logger.info(f"Request {request_id}: Response status: {response.status_code}")
     logger.info(f"Request {request_id}: Process time: {process_time:.2f}s")
 
-    # Убираем логирование тела ответа для избежания проблем
     return response
 
 if __name__ == "__main__":

@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Callable
 from app.models.schemas import Message, ToolDefinition
 from app.services.tool_call_processor import ToolCallProcessor
 import logging
@@ -8,9 +8,9 @@ logger = logging.getLogger(__name__)
 
 
 class BaseResponseGenerator(ABC):
-    """Абстрактный базовый класс для всех генераторов ответов"""
+    """Базовый класс генераторов ответов"""
 
-    def __init__(self, model_name: str, completion_caller):
+    def __init__(self, model_name: str, completion_caller: Callable):
         self.model_name = model_name
         self.tool_processor = ToolCallProcessor()
         self._completion_caller = completion_caller
@@ -24,15 +24,15 @@ class BaseResponseGenerator(ABC):
             tools: Optional[List[ToolDefinition]] = None,
             session_id: str = None
     ):
-        """Абстрактный метод генерации ответа"""
+        """Абстрактный метод генерации"""
         pass
 
     def _should_use_tools(self, tools: Optional[List[ToolDefinition]]) -> bool:
-        """Определяет, нужно ли использовать инструменты"""
+        """Проверка необходимости использования инструментов"""
         return tools is not None and len(tools) > 0
 
     def _convert_messages_to_dict(self, messages: List[Message]) -> List[Dict[str, Any]]:
-        """Конвертирует Pydantic сообщения в словари для llama_cpp"""
+        """Конвертация сообщений в словари"""
         result = []
         for message in messages:
             message_dict = {
@@ -49,8 +49,14 @@ class BaseResponseGenerator(ABC):
             result.append(message_dict)
         return result
 
-    def _prepare_generation_params(self, messages, temperature, max_tokens, tools):
-        """Подготавливает параметры для генерации (общая логика)"""
+    def _prepare_generation_params(
+            self,
+            messages: List[Message],
+            temperature: float,
+            max_tokens: int,
+            tools: Optional[List[ToolDefinition]]
+    ) -> Dict[str, Any]:
+        """Подготовка параметров генерации"""
         logger.info(f"Preparing generation params for {self.__class__.__name__}")
 
         # Конвертируем сообщения в словари
