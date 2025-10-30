@@ -216,5 +216,6 @@ models/*.gguf
 config/config.yml
 
 # Прочие файлы
+.idx
 .DS_Store
 Thumbs.db
