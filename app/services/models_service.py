@@ -83,7 +83,8 @@ class LlamaService:
             """
             try:
                 # Этот вызов блокирующий, но он выполняется в потоке executor'а
-                result_iterator = context.model.create_chat_completion(**kwargs)
+                kwargs['stream'] = True
+                result_iterator = context._model.create_chat_completion(**kwargs)
                 for chunk in result_iterator:
                     # Помещение в очередь из другого потока должно быть потокобезопасным
                     loop.call_soon_threadsafe(queue.put_nowait, chunk)
