@@ -71,18 +71,51 @@ class LlamaService:
             await self.model_pool.release(context)
 
     async def _create_completion_stream(self, session_id: str, **kwargs) -> AsyncGenerator[dict, None]:
-        """Создание stream completion"""
+        """Создание stream completion с неблокирующей итерацией."""
+        loop = asyncio.get_running_loop()
+        queue = asyncio.Queue()
         context = await self.model_pool.acquire()
-        try:
-            # Для потокового режима преобразуем синхронный генератор в асинхронный
-            kwargs['stream'] = True
-            result = await context.generate(**kwargs)
 
-            if hasattr(result, '__iter__'):
-                for chunk in result:
-                    yield chunk
+        def producer():
+            """
+            Запускается в отдельном потоке, итерируется по блокирующему
+            генератору и кладет результаты в очередь.
+            """
+            try:
+                # Этот вызов блокирующий, но он выполняется в потоке executor'а
+                result_iterator = context.model.create_chat_completion(**kwargs)
+                for chunk in result_iterator:
+                    # Помещение в очередь из другого потока должно быть потокобезопасным
+                    loop.call_soon_threadsafe(queue.put_nowait, chunk)
+            except Exception as e:
+                logger.error(f"Error in stream producer thread: {e}", exc_info=True)
+                # Отправляем ошибку в очередь, чтобы генератор мог ее обработать
+                loop.call_soon_threadsafe(queue.put_nowait, e)
+            finally:
+                # Сигнал о завершении
+                loop.call_soon_threadsafe(queue.put_nowait, None)
+
+        # Запускаем producer в отдельном потоке, чтобы не блокировать event loop
+        loop.run_in_executor(None, producer)
+
+        try:
+            while True:
+                # Асинхронно ждем следующий элемент из очереди
+                item = await queue.get()
+
+                # Завершаем, если получили сигнал
+                if item is None:
+                    break
+
+                # Если из потока пришла ошибка, возбуждаем ее в главном цикле
+                if isinstance(item, Exception):
+                    raise item
+
+                yield item
         finally:
+            # Гарантированно возвращаем контекст в пул
             await self.model_pool.release(context)
+
 
     async def generate_response_non_stream(
             self,
