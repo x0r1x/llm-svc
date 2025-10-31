@@ -12,7 +12,8 @@ logger = logging.getLogger(__name__)
 class ModelContext:
     """Контекст управления моделью"""
 
-    def __init__(self):
+    def __init__(self, context_id: int):
+        self.context_id = context_id
         self._model: Optional[Llama] = None
         self._lock = asyncio.Lock()
 
@@ -22,7 +23,7 @@ class ModelContext:
             if self._model is not None:
                 return
 
-            logger.info("Initializing model...")
+            logger.info(f"[Ctx-{self.context_id}] Initializing model...")
             try:
                 # Создаем модель в executor'е
                 loop = asyncio.get_event_loop()
@@ -30,25 +31,25 @@ class ModelContext:
                     None,
                     self._create_model
                 )
-                logger.info("Model initialized successfully")
+                logger.info(f"[Ctx-{self.context_id}] Model initialized successfully")
             except Exception as e:
-                logger.error(f"Model initialization failed: {e}")
+                logger.error(f"[Ctx-{self.context_id}] Model initialization failed: {e}")
                 self._model = None
                 raise
 
     async def generate(self, **kwargs) -> Any:
         """Генерация текста"""
         if self._model is None:
-            raise RuntimeError("Model is not initialized")
+            raise RuntimeError(f"[Ctx-{self.context_id}] Model is not initialized")
 
         async with self._lock:
             try:
                 return await self._run_in_executor(self._model.create_chat_completion, **kwargs)
             except asyncio.TimeoutError:
-                logger.error("Generation timeout exceeded")
+                logger.error(f"[Ctx-{self.context_id}] Generation timeout exceeded")
                 raise RuntimeError("Generation timeout")
             except Exception as e:
-                logger.error(f"Generation failed: {e}")
+                logger.error(f"[Ctx-{self.context_id}] Generation failed: {e}")
                 raise
 
     async def cleanup(self) -> None:
@@ -58,7 +59,7 @@ class ModelContext:
                 try:
                     del self._model
                 except Exception as e:
-                    logger.error(f"Model cleanup error: {e}")
+                    logger.error(f"[Ctx-{self.context_id}] Model cleanup error: {e}")
                 finally:
                     self._model = None
 
@@ -70,11 +71,11 @@ class ModelContext:
 
         template_path = Path(chat_template_path)
         if not template_path.exists():
-            logger.warning(f"Chat template not found at: {template_path}")
+            logger.warning(f"[Ctx-{self.context_id}] Chat template not found at: {template_path}")
             return None
 
         try:
-            logger.info(f"Loading chat template from: {template_path}")
+            logger.info(f"[Ctx-{self.context_id}] Loading chat template from: {template_path}")
             with open(template_path, 'r', encoding='utf-8') as f:
                 template_str = f.read()
 
@@ -85,10 +86,10 @@ class ModelContext:
                 add_generation_prompt=True
             ).to_chat_handler()
 
-            logger.info("Chat handler loaded successfully")
+            logger.info(f"[Ctx-{self.context_id}] Chat handler loaded successfully")
             return chat_formatter
         except Exception as e:
-            logger.error(f"Failed to load chat template: {e}")
+            logger.error(f"[Ctx-{self.context_id}] Failed to load chat template: {e}")
             return None
 
     def _create_model(self) -> Llama:
@@ -113,7 +114,7 @@ class ModelContext:
         # if chat_handler:
         #     model_params["chat_handler"] = chat_handler
 
-        logger.info(f"Creating model with params: { {k: v for k, v in model_params.items() if k != 'model_path'} }")
+        logger.info(f"[Ctx-{self.context_id}] Creating model with params: { {k: v for k, v in model_params.items() if k != 'model_path'} }")
         return Llama(**model_params)
 
     async def _run_in_executor(self, func: Callable, *args, **kwargs) -> Any:

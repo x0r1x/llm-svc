@@ -33,7 +33,7 @@ class ModelPool:
                 # Синхронная инициализация всех контекстов
                 initialization_tasks = []
                 for i in range(self.pool_size):
-                    ctx = ModelContext()
+                    ctx = ModelContext(context_id=i)
                     self._contexts.append(ctx)
                     initialization_tasks.append(ctx.initialize())
 
@@ -82,7 +82,7 @@ class ModelPool:
             context = self._available.pop()
             self._in_use.add(context)
             self._active_requests += 1
-            logger.debug(f"Acquired model context. Active requests: {self._active_requests}")
+            logger.info(f"Acquired model context [Ctx-{context.context_id}]. Active requests: {self._active_requests}")
             return context
 
     async def release(self, context: ModelContext) -> None:
@@ -95,9 +95,9 @@ class ModelPool:
                 if context.is_ready:
                     self._available.append(context)
                 else:
-                    logger.warning("Released context is not ready, it will not be returned to pool")
+                    logger.warning(f"Released context [Ctx-{context.context_id}] is not ready, it will not be returned to pool")
 
-            logger.debug(f"Released model context. Active requests: {self._active_requests}")
+            logger.info(f"Released model context [Ctx-{context.context_id}]. Active requests: {self._active_requests}")
 
     async def cleanup(self) -> None:
         """Очистка пула"""
