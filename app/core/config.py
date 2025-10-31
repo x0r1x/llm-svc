@@ -38,6 +38,14 @@ class ModelConfig(BaseModel):
 
     def __init__(self, **data):
         # Приоритет переменных окружения над YAML-конфигурацией
+        path_env = os.environ.get('MODEL_PATH')
+        if path_env is not None:
+            data['path'] = path_env
+
+        name_env = os.environ.get('MODEL_NAME')
+        if name_env is not None:
+            data['name'] = name_env
+            
         pool_size_env = os.environ.get('MODEL_POOL_SIZE')
         if pool_size_env is not None:
             data['pool_size'] = int(pool_size_env)
@@ -49,6 +57,18 @@ class ModelConfig(BaseModel):
         n_threads_batch_env = os.environ.get('MODEL_N_THREADS_BATCH')
         if n_threads_batch_env is not None:
             data['n_threads_batch'] = int(n_threads_batch_env)
+
+        ctx_size_env = os.environ.get('MODEL_CTX_SIZE')
+        if ctx_size_env is not None:
+            data['ctx_size'] = int(ctx_size_env)
+
+        n_batch_env = os.environ.get('MODEL_N_BATCH')
+        if n_batch_env is not None:
+            data['n_batch'] = int(n_batch_env)
+        
+        n_ubatch_env = os.environ.get('MODEL_N_UBATCH')
+        if n_ubatch_env is not None:
+            data['n_ubatch'] = int(n_ubatch_env)
 
         super().__init__(**data)
 
