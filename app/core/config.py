@@ -31,10 +31,26 @@ class ModelConfig(BaseModel):
     gpu_layers: int = 0
     verbose: bool = False
     pool_size: int = 1  # Размер пула моделей
-    n_thread: int = 1  # Количество потоков для CPU
-    n_threads_batch: int = 1  # Количество потоков для батчей
+    n_thread: int = 4  # Количество потоков для CPU
+    n_threads_batch: int = 4  # Количество потоков для батчей
     n_batch: int = 512  # Размер батча
     n_ubatch: int = 512  # Размер микро-батча
+
+    def __init__(self, **data):
+        # Приоритет переменных окружения над YAML-конфигурацией
+        pool_size_env = os.environ.get('MODEL_POOL_SIZE')
+        if pool_size_env is not None:
+            data['pool_size'] = int(pool_size_env)
+
+        n_thread_env = os.environ.get('MODEL_N_THREAD')
+        if n_thread_env is not None:
+            data['n_thread'] = int(n_thread_env)
+
+        n_threads_batch_env = os.environ.get('MODEL_N_THREADS_BATCH')
+        if n_threads_batch_env is not None:
+            data['n_threads_batch'] = int(n_threads_batch_env)
+
+        super().__init__(**data)
 
 
 class GenerationConfig(BaseModel):
@@ -128,7 +144,6 @@ class Settings(BaseModel):
                     break
             else:
                 # Если файл не найден, используем значения по умолчанию
-                # Просто возвращаем класс, поля инициализируются автоматически
                 return cls()
 
         try:
