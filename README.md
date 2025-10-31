@@ -1,6 +1,6 @@
 # Llama CPP API Service
 
-Этот сервис предоставляет API, совместимый с OpenAI, для работы с локальными LLM через llama-cpp-python, чтобы интегрировать их с LibreChat.
+Этот сервис предоставляет API, совместимый с OpenAI, для работы с локальными LLM через llama-cpp-python.
 
 ## API Endpoints
 * POST `/v1/chat/completions` - Генерация ответов чата
