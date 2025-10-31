@@ -42,6 +42,8 @@ async def chat_completion(
                 messages=request.messages,
                 temperature=request.temperature,
                 max_tokens=request.max_tokens,
+                frequency_penalty=request.frequency_penalty,
+                presence_penalty=request.presence_penalty,
                 tools=request.tools,
                 session_id=session_id
             )
@@ -59,6 +61,8 @@ async def chat_completion(
                 messages=request.messages,
                 temperature=request.temperature,
                 max_tokens=request.max_tokens,
+                frequency_penalty=request.frequency_penalty,
+                presence_penalty=request.presence_penalty,
                 tools=request.tools,
                 session_id=session_id
             )

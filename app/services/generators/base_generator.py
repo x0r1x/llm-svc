@@ -21,6 +21,8 @@ class BaseResponseGenerator(ABC):
             messages: List[Message],
             temperature: float,
             max_tokens: int,
+            frequency_penalty: float,
+            presence_penalty: float,
             tools: Optional[List[ToolDefinition]] = None,
             session_id: str = None
     ):
@@ -54,6 +56,8 @@ class BaseResponseGenerator(ABC):
             messages: List[Message],
             temperature: float,
             max_tokens: int,
+            frequency_penalty: float,
+            presence_penalty: float,
             tools: Optional[List[ToolDefinition]]
     ) -> Dict[str, Any]:
         """Подготовка параметров генерации"""
@@ -67,6 +71,8 @@ class BaseResponseGenerator(ABC):
             "messages": messages_dict,
             "temperature": temperature,
             "max_tokens": max_tokens,
+            "frequency_penalty": frequency_penalty,
+            "presence_penalty": presence_penalty,
         }
 
         # Добавляем инструменты, если они переданы

@@ -123,6 +123,8 @@ class LlamaService:
             messages: List[Message],
             temperature: float,
             max_tokens: int,
+            frequency_penalty: float,
+            presence_penalty: float,
             tools: Optional[List[ToolDefinition]] = None,
             session_id: str = None
     ) -> ChatCompletionResponse:
@@ -132,7 +134,7 @@ class LlamaService:
 
         try:
             return await self.non_stream_generator.generate(
-                messages, temperature, max_tokens, tools, session_id
+                messages, temperature, max_tokens, frequency_penalty, presence_penalty, tools, session_id
             )
         except ServiceUnavailableError:
             raise
@@ -145,6 +147,8 @@ class LlamaService:
             messages: List[Message],
             temperature: float,
             max_tokens: int,
+            frequency_penalty: float,
+            presence_penalty: float,
             tools: Optional[List[ToolDefinition]] = None,
             session_id: str = None
     ) -> AsyncGenerator[str, None]:
@@ -153,7 +157,7 @@ class LlamaService:
             session_id = f"stream_{uuid.uuid4().hex}"
 
         async for chunk in self.stream_generator.generate(
-                messages, temperature, max_tokens, tools, session_id
+                messages, temperature, max_tokens, frequency_penalty, presence_penalty, tools, session_id
         ):
             yield chunk
 

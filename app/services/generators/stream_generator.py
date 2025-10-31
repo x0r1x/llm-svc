@@ -1,23 +1,31 @@
-import json
 import time
 import uuid
 from typing import List, Optional, AsyncGenerator, Dict, Any
-from app.models.schemas import Message, ToolDefinition
+
+from app.models.schemas import (
+    Message,
+    ToolDefinition,
+    ChatCompletionChunk,
+    ChatCompletionChunkChoice,
+)
 from .base_generator import BaseResponseGenerator
 import logging
 
 logger = logging.getLogger(__name__)
 
+
 class StreamResponseGenerator(BaseResponseGenerator):
     """Генератор потоковых ответов"""
 
     async def generate(
-            self,
-            messages: List[Message],
-            temperature: float,
-            max_tokens: int,
-            tools: Optional[List[ToolDefinition]] = None,
-            session_id: str = None
+        self,
+        messages: List[Message],
+        temperature: float,
+        max_tokens: int,
+        frequency_penalty: float,
+        presence_penalty: float,
+        tools: Optional[List[ToolDefinition]] = None,
+        session_id: str = None,
     ) -> AsyncGenerator[str, None]:
         """Генерация потокового ответа"""
         logger.info("Starting stream generation")
@@ -26,7 +34,7 @@ class StreamResponseGenerator(BaseResponseGenerator):
         if self._should_use_tools(tools):
             yield self._create_error_chunk(
                 f"chatcmpl-{uuid.uuid4().hex}",
-                "Streaming is not supported when tools are provided. Use stream=false."
+                "Streaming is not supported when tools are provided. Use stream=false.",
             )
             return
 
@@ -36,7 +44,7 @@ class StreamResponseGenerator(BaseResponseGenerator):
         try:
             # Подготавливаем параметры (без инструментов для потокового режима)
             params = self._prepare_generation_params(
-                messages, temperature, max_tokens, None
+                messages, temperature, max_tokens, frequency_penalty, presence_penalty, None
             )
 
             # Получаем потоковый результат с session_id
@@ -61,24 +69,22 @@ class StreamResponseGenerator(BaseResponseGenerator):
             return None
 
         # Обновляем только необходимые метаданные
-        chunk['id'] = response_id
-        chunk['model'] = self.model_name
+        chunk["id"] = response_id
+        chunk["model"] = self.model_name
 
-        return f"data: {json.dumps(chunk)}\n\n"
+        return f"data: {chunk}\n\n"
 
     def _create_error_chunk(self, response_id: str, error_message: str) -> str:
-        """Создает чанк с ошибкой"""
-        error_chunk = {
-            "id": response_id,
-            "object": "chat.completion.chunk",
-            "created": int(time.time()),
-            "model": self.model_name,
-            "choices": [
-                {
-                    "index": 0,
-                    "delta": {"content": f"Error: {error_message}"},
-                    "finish_reason": "error"
-                }
-            ]
-        }
-        return f"data: {json.dumps(error_chunk)}\n\n"
+        """Создает чанк с ошибкой с использованием Pydantic моделей"""
+        choice = ChatCompletionChunkChoice(
+            index=0,
+            delta={"content": f"Error: {error_message}"},
+            finish_reason="error",
+        )
+        error_chunk = ChatCompletionChunk(
+            id=response_id,
+            created=int(time.time()),
+            model=self.model_name,
+            choices=[choice],
+        )
+        return f"data: {error_chunk.model_dump_json()}\n\n"

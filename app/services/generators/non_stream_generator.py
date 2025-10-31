@@ -19,6 +19,8 @@ class NonStreamResponseGenerator(BaseResponseGenerator):
             messages: List[Message],
             temperature: float,
             max_tokens: int,
+            frequency_penalty: float,
+            presence_penalty: float,
             tools: Optional[List[ToolDefinition]] = None,
             session_id: str = None
     ) -> ChatCompletionResponse:
@@ -31,7 +33,7 @@ class NonStreamResponseGenerator(BaseResponseGenerator):
         try:
             # Подготавливаем параметры
             params = self._prepare_generation_params(
-                messages, temperature, max_tokens, tools
+                messages, temperature, max_tokens, frequency_penalty, presence_penalty, tools
             )
 
             logger.info(f"Calling model completion for session {session_id}")

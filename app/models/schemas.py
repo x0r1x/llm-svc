@@ -1,3 +1,4 @@
+
 from pydantic import BaseModel, Field
 from typing import List, Optional, Literal, Dict, Any, Union
 from enum import Enum
@@ -63,28 +64,10 @@ class ChatCompletionRequest(BaseModel):
     messages: List[Message]
     temperature: Optional[float] = Field(0.7, ge=0, le=2)
     max_tokens: Optional[int] = Field(256, ge=1)
+    frequency_penalty: Optional[float] = Field(0.0, ge=-2.0, le=2.0)
+    presence_penalty: Optional[float] = Field(0.0, ge=-2.0, le=2.0)
     stream: Optional[bool] = False
     tools: Optional[List[ToolDefinition]] = None
-    #tool_choice: Optional[Union[Literal["none", "auto"], Dict[str, Any]]] = "auto"
-
-# class ChatChoice(BaseModel):
-#     index: int
-#     message: Message
-#     finish_reason: Optional[str] = "stop"
-#     delta: Optional[Dict[str, Any]] = None
-#
-# class UsageInfo(BaseModel):
-#     prompt_tokens: int
-#     completion_tokens: int
-#     total_tokens: int
-#
-# class ChatResponse(BaseModel):
-#     id: str
-#     object: str = "chat.completion"
-#     created: int
-#     model: str
-#     choices: List[ChatChoice]
-#     usage: UsageInfo
 
 class ChatCompletionResponseChoice(BaseModel):
     index: int
