@@ -1,3 +1,4 @@
+import json
 import time
 import uuid
 from typing import List, Optional, AsyncGenerator, Dict, Any
@@ -72,7 +73,7 @@ class StreamResponseGenerator(BaseResponseGenerator):
         chunk["id"] = response_id
         chunk["model"] = self.model_name
 
-        return f"data: {chunk}\n\n"
+        return f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
 
     def _create_error_chunk(self, response_id: str, error_message: str) -> str:
         """Создает чанк с ошибкой с использованием Pydantic моделей"""
