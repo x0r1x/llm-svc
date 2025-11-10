@@ -93,6 +93,8 @@ class ModelPool:
                 self._active_requests = max(0, self._active_requests - 1)
                 # Проверяем, что контекст все еще валиден перед возвратом в пул
                 if context.is_ready:
+                    # Сброс кэш-а
+                    context.reset_cache()
                     self._available.append(context)
                 else:
                     logger.warning(f"Released context [Ctx-{context.context_id}] is not ready, it will not be returned to pool")

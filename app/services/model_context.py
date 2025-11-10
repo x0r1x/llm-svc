@@ -36,6 +36,12 @@ class ModelContext:
                 logger.error(f"[Ctx-{self.context_id}] Model initialization failed: {e}")
                 self._model = None
                 raise
+            
+    async def reset_cache(self) -> None:
+        """Сброс KV-кэша модели"""
+        if self._model is not None:
+            await self._run_in_executor(self._model.reset)
+            logger.debug(f"[Ctx-{self.context_id}] KV cache reset")
 
     async def generate(self, **kwargs) -> Any:
         """Генерация текста"""
