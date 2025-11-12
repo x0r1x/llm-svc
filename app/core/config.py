@@ -109,6 +109,12 @@ class SecurityConfig(BaseModel):
     enabled: bool = True
     api_key: Optional[str] = None
     api_key_header: str = "X-API-Key"
+    
+    def __init__(self, **data):
+        # Инициализация API ключа из переменных окружения, если он не задан в конфиге
+        if 'api_key' not in data or data['api_key'] is None:
+            data['api_key'] = os.environ.get('API_KEY')
+        super().__init__(**data)
 
 
 class NexusConfig(BaseModel):
