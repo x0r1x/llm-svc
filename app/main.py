@@ -184,7 +184,6 @@ async def log_requests(request: Request, call_next):
             except UnicodeDecodeError:
                 logger.info(f"Request {request_id}: Response body: [Binary data - {len(response_body)} bytes]")
             
-            # Восстанавливаем итератор тела ответа
             # Восстанавливаем итератор тела ответа как асинхронный итератор
             async def new_body_iterator():
                 yield response_body
