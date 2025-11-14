@@ -5,6 +5,7 @@ import uvicorn
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 import logging.config
 
 from app.core.config import settings
@@ -145,8 +146,9 @@ async def log_requests(request: Request, call_next):
     # Логирование входящего запроса
     logger.info(f"Request {request_id}: {request.method} {request.url}")
 
+    # Логирование тела запроса для POST, PUT, PATCH методов
     try:
-        if request.method == "POST":
+        if request.method in ["POST", "PUT", "PATCH"]:
             body = await request.body()
             if body:
                 try:
@@ -154,15 +156,44 @@ async def log_requests(request: Request, call_next):
                     logger.info(f"Request {request_id}: Body: {json.dumps(body_json, ensure_ascii=False)}")
                 except json.JSONDecodeError:
                     logger.info(f"Request {request_id}: Body: {body.decode()}")
+            # Восстанавливаем тело запроса для дальнейшей обработки
             request._body = body
     except Exception as e:
-        logger.error(f"Request {request_id}: Error reading body: {str(e)}")
+        logger.error(f"Request {request_id}: Error reading request body: {str(e)}")
 
     # Обработка запроса
     response = await call_next(request)
 
     # Логирование ответа
     process_time = time.time() - start_time
+    
+    # Проверяем, является ли ответ потоковым
+    if isinstance(response, StreamingResponse):
+        logger.info(f"Request {request_id}: Response: [Streaming response - body not logged]")
+    else:
+        try:
+            # Получаем тело ответа
+            response_body = b""
+            async for chunk in response.body_iterator:
+                response_body += chunk
+            
+            # Декодируем тело ответа
+            try:
+                response_body_text = response_body.decode()
+                logger.info(f"Request {request_id}: Response body: {response_body_text}")
+            except UnicodeDecodeError:
+                logger.info(f"Request {request_id}: Response body: [Binary data - {len(response_body)} bytes]")
+            
+            # Восстанавливаем итератор тела ответа
+            # Восстанавливаем итератор тела ответа как асинхронный итератор
+            async def new_body_iterator():
+                yield response_body
+            
+            response.body_iterator = new_body_iterator()
+            
+        except Exception as e:
+            logger.error(f"Request {request_id}: Error reading response body: {str(e)}")
+
     logger.info(f"Request {request_id}: Response status: {response.status_code}")
     logger.info(f"Request {request_id}: Process time: {process_time:.2f}s")
 
