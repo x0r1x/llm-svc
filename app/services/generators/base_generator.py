@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional, Dict, Any, Callable
 from app.models.schemas import Message, ToolDefinition
-from app.services.tool_call_processor import ToolCallProcessor
+from app.services.generators.tool_call_processor import ToolCallProcessor
 import logging
 
 logger = logging.getLogger(__name__)

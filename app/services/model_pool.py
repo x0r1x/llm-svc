@@ -86,20 +86,33 @@ class ModelPool:
             return context
 
     async def release(self, context: ModelContext) -> None:
-        """Возврат модели в пул и уменьшение счетчика активных запросов"""
+        """Возврат модели в пул с гарантированным освобождением семафора"""
         async with self._lock:
-            if context in self._in_use:
-                self._in_use.remove(context)
-                self._active_requests = max(0, self._active_requests - 1)
-                # Проверяем, что контекст все еще валиден перед возвратом в пул
-                if context.is_ready:
-                    # Сброс кэш-а
-                    context.reset_cache()
-                    self._available.append(context)
+            try:
+                if context in self._in_use:
+                    self._in_use.remove(context)
+                    self._active_requests = max(0, self._active_requests - 1)
+                    
+                    # ВСЕГДА уменьшаем счетчик, даже если контекст не ready
+                    if context.is_ready:
+                        await context.reset_cache()  # Добавляем await
+                        self._available.append(context)
+                        logger.info(f"Context [Ctx-{context.context_id}] returned to pool")
+                    else:
+                        logger.warning(f"Context [Ctx-{context.context_id}] not ready, scheduling reinit")
+                        # Запускаем переинициализацию, но не блокируем release
+                        asyncio.create_task(self._reinitialize_context(context))
                 else:
-                    logger.warning(f"Released context [Ctx-{context.context_id}] is not ready, it will not be returned to pool")
-
-            logger.info(f"Released model context [Ctx-{context.context_id}]. Active requests: {self._active_requests}")
+                    logger.warning(f"Context [Ctx-{context.context_id}] not in _in_use during release")
+                    # Все равно уменьшаем счетчик для безопасности
+                    self._active_requests = max(0, self._active_requests - 1)
+                    
+            except Exception as e:
+                logger.error(f"Error during context release: {e}")
+                # Гарантируем уменьшение счетчика даже при ошибке
+                self._active_requests = max(0, self._active_requests - 1)
+        
+        logger.info(f"Released model context [Ctx-{context.context_id}]. Active requests: {self._active_requests}")
 
     async def cleanup(self) -> None:
         """Очистка пула"""
