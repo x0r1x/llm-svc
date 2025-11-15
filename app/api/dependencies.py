@@ -7,6 +7,19 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+async def get_llama_service_handler_non_connection_pool(
+        llama_service: LlamaService = Depends(get_llama_service),
+) -> LlamaService:
+    """Зависимость для проверки доступности сервиса LLM."""
+    if not llama_service.is_loaded:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="LLM model is not loaded",
+        )
+        
+    return llama_service
+
+
 async def get_llama_service_handler(
         llama_service: LlamaService = Depends(get_llama_service),
 ) -> LlamaService:
