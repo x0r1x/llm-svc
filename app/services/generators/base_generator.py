@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional, Dict, Any, Callable
-from app.models.schemas import Message, ToolDefinition
+from app.models.schemas import AssistantMessage, FunctionMessage, Message, ToolDefinition, ToolMessage
 from app.services.generators.tool_call_processor import ToolCallProcessor
 import logging
 
@@ -37,18 +37,30 @@ class BaseResponseGenerator(ABC):
         """Конвертация сообщений в словари"""
         result = []
         for message in messages:
+            # Базовый словарь для всех сообщений
             message_dict = {
                 "role": message.role.value,
                 "content": message.content
             }
-            # Добавляем опциональные поля если они есть
-            if message.name is not None:
-                message_dict["name"] = message.name
-            if message.tool_calls is not None:
+            
+            # Особые поля для разных типов сообщений
+            if isinstance(message, AssistantMessage) and message.tool_calls:
                 message_dict["tool_calls"] = [
-                    tool_call.model_dump() for tool_call in message.tool_calls
+                    {
+                        "id": tool_call.id,
+                        "type": tool_call.type,
+                        "function": {
+                            "name": tool_call.function.name,
+                            "arguments": tool_call.function.arguments
+                        }
+                    }
+                    for tool_call in message.tool_calls
                 ]
+            elif isinstance(message, ToolMessage):
+                message_dict["tool_call_id"] = message.tool_call_id
+            
             result.append(message_dict)
+
         return result
 
     def _prepare_generation_params(

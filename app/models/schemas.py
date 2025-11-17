@@ -1,7 +1,10 @@
-
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional, Literal, Dict, Any, Union
 from enum import Enum
+import json
+import logging
+
+logger = logging.getLogger(__name__) 
 
 class FunctionCall(BaseModel):
     name: str = Field(..., description="Название вызываемой функции")
@@ -28,50 +31,96 @@ class MessageRole(str, Enum):
     FUNCTION = "function"
     TOOL = "tool"
 
-class Message(BaseModel):
-    role: MessageRole
-    content: Optional[str] = None
-    tool_calls: Optional[List[ToolCall]] = None
-    name: Optional[str] = None
+# === Базовые классы для каждого типа сообщений ===
 
-class ChatCompletionRequestSystemMessage(BaseModel):
-    role: Literal["system"] = "system"
+class SystemMessage(BaseModel):
+    role: Literal[MessageRole.SYSTEM] = MessageRole.SYSTEM
     content: str
 
-class ChatCompletionRequestUserMessage(BaseModel):
-    role: Literal["user"] = "user"
+class UserMessage(BaseModel):
+    role: Literal[MessageRole.USER] = MessageRole.USER
     content: Union[str, List[Dict[str, Any]]]
 
-class ChatCompletionRequestAssistantMessage(BaseModel):
-    # Переопределяем существующий класс, добавляя tool_calls
-    role: Literal["assistant"] = "assistant"
+    @field_validator('content', mode='before')
+    @classmethod
+    def convert_content(cls, v: Any) -> Any:
+        """Конвертация MCP-формата в строку"""
+        if isinstance(v, list):
+            text_parts = []
+            for item in v:
+                if isinstance(item, dict) and item.get("type") == "text" and "text" in item:
+                    text_parts.append(item.get("text", ""))
+            return "".join(text_parts)
+        return v
+
+class AssistantMessage(BaseModel):
+    role: Literal[MessageRole.ASSISTANT] = MessageRole.ASSISTANT
     content: Optional[str] = None
-    tool_calls: Optional[List[ToolCall]] = None  # Заменяем старый тип на новый
+    tool_calls: Optional[List[ToolCall]] = None
 
-class ChatCompletionRequestToolMessage(BaseModel):
-    # Сообщение с результатом выполнения инструмента
-    role: Literal["tool"] = "tool"
-    content: str
+class ToolMessage(BaseModel):
+    """Строгое определение для tool-сообщений"""
+    role: Literal[MessageRole.TOOL] = MessageRole.TOOL
+    content: str  # JSON-строка с оригинальной структурой MCP
     tool_call_id: str
+    name: str
 
-class ChatCompletionRequestFunctionMessage(BaseModel):
-    role: Literal["function"] = "function"
+    @field_validator('content', mode='before')
+    @classmethod
+    def convert_to_json_string(cls, v: Any) -> str:
+        """Конвертируем content в JSON-строку с сохранением структуры MCP"""
+        import json
+        
+        # Если это уже строка, проверяем не JSON ли это
+        if isinstance(v, str):
+            try:
+                # Если это валидный JSON, оставляем как есть
+                json.loads(v)
+                return v
+            except json.JSONDecodeError:
+                # Если это простая строка, оборачиваем в MCP структуру
+                return json.dumps([{"type": "text", "text": v}], ensure_ascii=False)
+        
+        # Если это список (оригинальный MCP формат)
+        elif isinstance(v, list):
+            # Сериализуем весь список в JSON строку
+            try:
+                return json.dumps(v, ensure_ascii=False)
+            except Exception as e:
+                logger.error(f"Failed to serialize MCP content to JSON: {e}")
+                # Fallback: пытаемся извлечь текст
+                text_parts = []
+                for item in v:
+                    if isinstance(item, dict) and item.get("type") == "text" and "text" in item:
+                        text_parts.append(str(item.get("text", "")))
+                return json.dumps([{"type": "text", "text": "".join(text_parts)}], ensure_ascii=False)
+        
+        # Для других типов - преобразуем в текст и оборачиваем
+        else:
+            return json.dumps([{"type": "text", "text": str(v)}], ensure_ascii=False)
+
+class FunctionMessage(BaseModel):
+    role: Literal[MessageRole.FUNCTION] = MessageRole.FUNCTION
     content: str
+    name: str
+
+# === Union тип для аннотации ===
+Message = Union[SystemMessage, UserMessage, AssistantMessage, ToolMessage, FunctionMessage]
 
 class ChatCompletionRequest(BaseModel):
-    # Расширяем модель запроса для поддержки инструментов
     model: str = "abstract-model"
-    messages: List[Message]
+    messages: List[Message]  # Используем Union тип
     temperature: Optional[float] = Field(0.7, ge=0, le=2)
     max_tokens: Optional[int] = Field(256, ge=1)
     frequency_penalty: Optional[float] = Field(0.0, ge=-2.0, le=2.0)
     presence_penalty: Optional[float] = Field(0.0, ge=-2.0, le=2.0)
     stream: Optional[bool] = False
     tools: Optional[List[ToolDefinition]] = None
+    tool_choice: Optional[Union[str, Dict[str, Any]]] = None
 
 class ChatCompletionResponseChoice(BaseModel):
     index: int
-    message: Message
+    message: AssistantMessage  # В ответе всегда assistant!
     finish_reason: Optional[str] = None
 
 class UsageInfo(BaseModel):

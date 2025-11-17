@@ -3,7 +3,7 @@ import uuid
 from typing import List, Optional
 from app.models.schemas import (
     Message, ToolDefinition, ChatCompletionResponse,
-    UsageInfo, MessageRole, ChatCompletionResponseChoice
+    UsageInfo, MessageRole, ChatCompletionResponseChoice, AssistantMessage
 )
 from .base_generator import BaseResponseGenerator
 import logging
@@ -80,7 +80,7 @@ class NonStreamResponseGenerator(BaseResponseGenerator):
                 logger.info(f"Extracted {len(extracted_tool_calls)} tool calls")
 
         # Создаем сообщение ассистента
-        assistant_message = Message(
+        assistant_message = AssistantMessage(
             role=MessageRole.ASSISTANT,
             content=content if content else None,
             tool_calls=tool_calls
