@@ -116,9 +116,9 @@ class ModelContext:
             model_params["chat_format"] = settings.model.chat_format
 
         # Загружаем chat handler если указан путь к шаблону
-        # chat_handler = self._load_chat_handler()
-        # if chat_handler:
-        #     model_params["chat_handler"] = chat_handler
+        chat_handler = self._load_chat_handler()
+        if chat_handler:
+            model_params["chat_handler"] = chat_handler
 
         logger.info(f"[Ctx-{self.context_id}] Creating model with params: { {k: v for k, v in model_params.items() if k != 'model_path'} }")
         return Llama(**model_params)

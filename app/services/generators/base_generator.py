@@ -75,7 +75,6 @@ class BaseResponseGenerator(ABC):
         """Подготовка параметров генерации"""
         logger.info(f"Preparing generation params for {self.__class__.__name__}")
 
-        # Конвертируем сообщения в словари
         messages_dict = self._convert_messages_to_dict(messages)
         logger.info(f"Messages dict: {messages_dict}")
 
@@ -87,10 +86,9 @@ class BaseResponseGenerator(ABC):
             "presence_penalty": presence_penalty,
         }
 
-        # Добавляем инструменты, если они переданы
+        # Добавляем инструменты, если они переданы (без tool_choice!)
         if self._should_use_tools(tools):
             params["tools"] = [tool.model_dump() for tool in tools]
-            params["tool_choice"] = "auto"
             logger.info(f"Tools enabled: {[tool.function.name for tool in tools]}")
 
         logger.info(f"Completion params: {params}")

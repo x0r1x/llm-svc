@@ -70,20 +70,20 @@ class NonStreamResponseGenerator(BaseResponseGenerator):
         content = message_data.get('content', '')
         tool_calls = message_data.get('tool_calls')
 
-        # Обрабатываем tool calls если есть инструменты
-        if self._should_use_tools(tools) and content:
+        # Обрабатываем tool calls только если они переданы и контент содержит теги
+        if self._should_use_tools(tools) and content and '<tool_call>' in content:
             cleaned_content, extracted_tool_calls = self.tool_processor.extract_tool_calls(content)
             if extracted_tool_calls:
-                content = cleaned_content.strip() if cleaned_content else ''
+                content = cleaned_content.strip() if cleaned_content else None
                 tool_calls = extracted_tool_calls
                 finish_reason = "tool_calls"
-                logger.info(f"Extracted {len(extracted_tool_calls)} tool calls")
+                logger.info(f"Extracted {len(extracted_tool_calls)} tool calls from text")
 
         # Создаем сообщение ассистента
         assistant_message = AssistantMessage(
             role=MessageRole.ASSISTANT,
             content=content if content else None,
-            tool_calls=tool_calls
+            tool_calls=tool_calls if tool_calls else None
         )
 
         return ChatCompletionResponse(
@@ -114,7 +114,7 @@ class NonStreamResponseGenerator(BaseResponseGenerator):
             choices=[
                 ChatCompletionResponseChoice(
                     index=0,
-                    message=Message(
+                    message=AssistantMessage(
                         role=MessageRole.ASSISTANT,
                         content=f"Error: {error_message}"
                     ),
