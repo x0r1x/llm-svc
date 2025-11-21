@@ -11,7 +11,7 @@ async def get_llama_service_handler_non_connection_pool(
         llama_service: LlamaService = Depends(get_llama_service),
 ) -> LlamaService:
     """Зависимость для проверки доступности сервиса LLM."""
-    if not llama_service.is_loaded:
+    if not llama_service.is_ready:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="LLM model is not loaded",
@@ -24,28 +24,20 @@ async def get_llama_service_handler(
         llama_service: LlamaService = Depends(get_llama_service),
 ) -> LlamaService:
     """Зависимость для проверки доступности сервиса LLM."""
-    if not llama_service.is_loaded:
+    if not llama_service.is_ready:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="LLM model is not loaded",
         )
-
-    # Проверяем, есть ли свободные инстансы для обработки запроса
+        
+    # Проверяем, не занята ли модель другим запросом
     if not llama_service.is_available:
+        logger.warning("Service is busy processing another request")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Service is busy. Maximum concurrent requests: {llama_service.model_pool.max_concurrent_requests}, "
-                   f"Current active requests: {llama_service.model_pool.active_requests_count}, "
-                   f"Total instances: {llama_service.model_pool.total_count}"
+            detail="Service is busy processing another request. Please try again later."
         )
-
-    # Дополнительная проверка: если сервис почти перегружен, предупреждаем
-    if llama_service.model_pool.active_requests_count >= llama_service.model_pool.max_concurrent_requests:
-        logger.warning(
-            f"Service near capacity: {llama_service.model_pool.active_requests_count}/"
-            f"{llama_service.model_pool.max_concurrent_requests} active requests"
-        )
-
+    
     return llama_service
 
 

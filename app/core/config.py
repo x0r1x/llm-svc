@@ -30,7 +30,6 @@ class ModelConfig(BaseModel):
     ctx_size: int = 4096
     gpu_layers: int = 0
     verbose: bool = False
-    pool_size: int = 1  # Размер пула моделей
     n_thread: int = 4  # Количество потоков для CPU
     n_threads_batch: int = 4  # Количество потоков для батчей
     n_batch: int = 512  # Размер батча
@@ -46,10 +45,10 @@ class ModelConfig(BaseModel):
         if name_env is not None:
             data['name'] = name_env
             
-        pool_size_env = os.environ.get('MODEL_POOL_SIZE')
-        if pool_size_env is not None:
-            data['pool_size'] = int(pool_size_env)
-
+        gpu_layers_env = os.environ.get('GPU_LAYERS')
+        if gpu_layers_env is not None:
+            data['gpu_layers'] = gpu_layers_env
+            
         n_thread_env = os.environ.get('MODEL_N_THREAD')
         if n_thread_env is not None:
             data['n_thread'] = int(n_thread_env)

@@ -24,7 +24,6 @@ model:
   ctx_size: 4096
   gpu_layers: 0
   verbose: false
-  pool_size: 1  # Размер пула моделей
   n_thread: 4  # Количество потоков для CPU
   n_threads_batch: 4  # Количество потоков для батчей
   n_batch: 512  # Размер батча

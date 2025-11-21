@@ -1,3 +1,4 @@
+# app/services/generators/non_stream_generator.py
 import time
 import uuid
 from typing import List, Optional
@@ -14,7 +15,7 @@ logger = logging.getLogger(__name__)
 class NonStreamResponseGenerator(BaseResponseGenerator):
     """Генератор не-потоковых ответов"""
 
-    async def generate(
+    def generate(
             self,
             messages: List[Message],
             temperature: float,
@@ -38,8 +39,7 @@ class NonStreamResponseGenerator(BaseResponseGenerator):
 
             logger.info(f"Calling model completion for session {session_id}")
 
-            # Вызываем completion с session_id через _completion_caller
-            response = await self._completion_caller(session_id, **params)
+            response = self._completion_caller(session_id, **params)
             logger.info(f"Model response received, processing...")
 
             # Обрабатываем ответ
