@@ -1,4 +1,5 @@
 import uuid
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from app.models.schemas import ChatCompletionRequest
@@ -36,7 +37,7 @@ async def chat_completion(
 
     try:
         if request.stream:
-            # Потоковый режим - используем синхронный генератор
+            # Потоковый режим
             response_generator = llama_service.generate_response_stream(
                 messages=request.messages,
                 temperature=request.temperature,
@@ -55,8 +56,8 @@ async def chat_completion(
                 }
             )
         else:
-            # Обычный режим - синхронный вызов
-            response = llama_service.generate_response_non_stream(
+            # Обычный режим
+            response = await llama_service.generate_response_non_stream(
                 messages=request.messages,
                 temperature=request.temperature,
                 max_tokens=request.max_tokens,
@@ -72,7 +73,7 @@ async def chat_completion(
         logger.warning(f"Service unavailable: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=str(e) # Возвращаем детальное сообщение
+            detail="Service temporarily unavailable. Please try again later."
         )
     except Exception as e:
         logger.error(f"Chat request Error: {str(e)}", exc_info=True)

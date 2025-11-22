@@ -1,9 +1,8 @@
-# app/services/generators/stream_generator.py
 import json
 import time
 import uuid
 import re
-from typing import List, Optional, Generator, Dict, Any
+from typing import List, Optional, AsyncGenerator, Dict, Any
 
 from app.models.schemas import Message, ToolDefinition
 from .base_generator import BaseResponseGenerator
@@ -21,7 +20,7 @@ class StreamResponseGenerator(BaseResponseGenerator):
         self.tool_processor = ToolCallProcessor()
         self.tool_call_pattern = re.compile(r'<tool_call>\s*(.*?)\s*</tool_call>', re.DOTALL)
 
-    def generate(
+    async def generate(
         self,
         messages: List[Message],
         temperature: float,
@@ -30,8 +29,7 @@ class StreamResponseGenerator(BaseResponseGenerator):
         presence_penalty: float,
         tools: Optional[List[ToolDefinition]] = None,
         session_id: str = None,
-    ) -> Generator[str, None, None]:
-        """Синхронный генератор потокового ответа"""
+    ) -> AsyncGenerator[str, None]:
         logger.info(f"Streaming generation started [Session: {session_id}]")
         response_id = f"chatcmpl-{uuid.uuid4().hex}"
 
@@ -43,7 +41,7 @@ class StreamResponseGenerator(BaseResponseGenerator):
                 messages, temperature, max_tokens, frequency_penalty, presence_penalty, tools
             )
 
-            for chunk in self._completion_caller(session_id, **params):
+            async for chunk in self._completion_caller(session_id, **params):
                 delta = chunk.get('choices', [{}])[0].get('delta', {})
                 content = delta.get('content', '')
 
@@ -62,7 +60,7 @@ class StreamResponseGenerator(BaseResponseGenerator):
                         tool_calls = self._parse_tool_calls_from_buffer(buffer)
                         if tool_calls:
                             # Генерируем последовательность как OpenAI
-                            for tool_chunk in self._stream_tool_calls(response_id, tool_calls[0]):
+                            async for tool_chunk in self._stream_tool_calls(response_id, tool_calls[0]):
                                 yield tool_chunk
                         buffer = ""
                         tool_call_detected = False
@@ -76,7 +74,7 @@ class StreamResponseGenerator(BaseResponseGenerator):
             logger.error(f"Streaming error: {str(e)}", exc_info=True)
             yield self._create_error_chunk(response_id, str(e))
 
-    def _stream_tool_calls(self, response_id: str, tool_call: dict) -> Generator[str, None, None]:
+    async def _stream_tool_calls(self, response_id: str, tool_call: dict) -> AsyncGenerator[str, None]:
         """Строгая имитация OpenAI streaming для LibreChat"""
         
         # Чанк 1: role + инициализация tool call
@@ -102,6 +100,7 @@ class StreamResponseGenerator(BaseResponseGenerator):
 
         # Чанк 2: аргументы (разбиваем на части для больших ответов)
         args = tool_call['function']['arguments']
+        # Для простоты отправляем за 2 чанка
         mid = len(args) // 2
         if mid > 0:
             yield f"data: {json.dumps({
@@ -125,7 +124,7 @@ class StreamResponseGenerator(BaseResponseGenerator):
             'choices': [{
                 'index': 0,
                 'delta': {'tool_calls': [{'index': 0, 'function': {'arguments': args[mid:]}}]},
-                'finish_reason': 'tool_calls'
+                'finish_reason': 'tool_calls'  # ВАЖНО: здесь!
             }]
         }, ensure_ascii=False)}\n\n"
 
@@ -136,15 +135,6 @@ class StreamResponseGenerator(BaseResponseGenerator):
             'created': int(time.time()),
             'model': self.model_name,
             'choices': [{'index': 0, 'delta': {'content': content}, 'finish_reason': None}]
-        }, ensure_ascii=False)}\n\n"
-
-    def _create_error_chunk(self, response_id: str, error_message: str) -> str:
-        return f"data: {json.dumps({
-            'id': response_id,
-            'object': 'chat.completion.chunk',
-            'created': int(time.time()),
-            'model': self.model_name,
-            'choices': [{'index': 0, 'delta': {'content': f'Error: {error_message}'}, 'finish_reason': 'stop'}]
         }, ensure_ascii=False)}\n\n"
 
     def _parse_tool_calls_from_buffer(self, buffer: str) -> List[dict]:
