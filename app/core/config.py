@@ -46,6 +46,10 @@ class ModelConfig(BaseModel):
         if name_env is not None:
             data['name'] = name_env
             
+        gpu_layer_env = os.environ.get('GPU_LAYERS')
+        if gpu_layer_env is not None:
+            data['gpu_layers'] = gpu_layer_env
+            
         pool_size_env = os.environ.get('MODEL_POOL_SIZE')
         if pool_size_env is not None:
             data['pool_size'] = int(pool_size_env)

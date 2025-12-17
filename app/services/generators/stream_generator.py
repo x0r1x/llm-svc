@@ -137,6 +137,23 @@ class StreamResponseGenerator(BaseResponseGenerator):
             'choices': [{'index': 0, 'delta': {'content': content}, 'finish_reason': None}]
         }, ensure_ascii=False)}\n\n"
 
+    def _create_error_chunk(self, response_id: str, error_message: str) -> str:
+        """Создание чанка с ошибкой для потокового ответа"""
+        return f"data: {json.dumps({
+            'id': response_id,
+            'object': 'chat.completion.chunk',
+            'created': int(time.time()),
+            'model': self.model_name,
+            'choices': [{
+                'index': 0,
+                'delta': {
+                    'role': 'assistant',
+                    'content': f"Error: {error_message}"
+                },
+                'finish_reason': 'stop'
+            }]
+        }, ensure_ascii=False)}\n\n"
+
     def _parse_tool_calls_from_buffer(self, buffer: str) -> List[dict]:
         tool_calls = []
         for match in self.tool_call_pattern.findall(buffer):
